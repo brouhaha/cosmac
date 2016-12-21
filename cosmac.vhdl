@@ -1,5 +1,19 @@
 -- COSMAC processor core
--- Copyright 2009, 2010 Eric Smith <eric@brouhaha.com>
+-- Copyright 2009, 2010, 2016 Eric Smith <spacewar@gmail.com>
+
+-- This program is free software: you can redistribute it and/or modify
+-- it under the terms of version 3 of the GNU General Public License
+-- as published by the Free Software Foundation.
+
+-- This program is distributed in the hope that it will be useful,
+-- but WITHOUT ANY WARRANTY; without even the implied warranty of
+-- MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+-- GNU General Public License for more details.
+
+-- You should have received a copy of the GNU General Public License
+-- along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+
 -- Instruction set compatible with CDP1802
 -- Not bus compatible with CDP1802
 -- Single clock cycle per machine cycle

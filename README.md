@@ -63,13 +63,14 @@ The following features have not been tested:
 
 ## License information:
 
-For licensing purposes, the VHDL files both individually and collectively
-are considered a "program", licensed under the terms of the GNU General
-Public License 3.0, which is provided in the file gpl-3.0.txt.  If you
-distribute this program as part of a derived work (including but not
-limited to use in an FPGA or ASIC), the license imposes obligations on
-you to make the source code for the entire work available.  No one forces
-you to accept this license, but if you choose not to accept it, nothing
+For licensing purposes, the VHDL files both individually and
+collectively, with the exception of dcm_wrapper.vhdl, are considered a
+"program", licensed under the terms of the GNU General Public License
+3.0, which is provided in the file gpl-3.0.txt.  If you distribute
+this program as part of a derived work (including but not limited to
+use in an FPGA or ASIC), the license imposes obligations on you to
+make the source code for the entire work available.  No one forces you
+to accept this license, but if you choose not to accept it, nothing
 authorizes you to distribute this program.
 
 If you wish to use this program as part of a derived work, but without
