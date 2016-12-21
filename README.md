@@ -14,18 +14,24 @@ power.
 
 This project contains an implementation of a CPU core in VHDL
 (cosmac.vhdl) which is object-code compatible with the CDP1802.  The
-electrical interface is similar to the CDP1802 but not identical; in
-particular each CDP1802 machine cycles requires eight clock cycles,
-while this core only requires a single clock cycle.
-
-The CPU core is written in synthesizable VHDL, with no vendor-specific
+CPU core is written in synthesizable VHDL, with no vendor-specific
 constructs.
 
+The electrical interface of the core is similar to the CDP1802 but not
+identical. Due to the lack of true bidirectional signals in FPGAs,
+there are separate 8-bit data bus inputs and outputs.
+
+The core executes each machine cycle in one clock cycle, whereas the
+CDP1802 required eight clock cycles per machine cycle.  In a Xilinx
+XC3S1600E FPGA, the core can run with a 25 MHz clock, giving it
+performance equivalent to a 200 MHz CDP1802.
+
 Additional VHDL files are provided in the elf directory for a
-demonstration system for use in Xilinx FPGAs.  The demo is equivalent
-to a COSMAC ELF microcontroller, as described in a series of Popular
-Electronics articles in 1976.  The demo runs on a Xilinx XC3S1600E
-evaluation board, requiring that switches and LEDs be interfaced.
+demonstration system for use in Xilinx FPGAs, and some of these source
+files are Xilinx-specific.  The demo is equivalent to a COSMAC ELF
+microcontroller, as described in a series of Popular Electronics
+articles in 1976.  The demo runs on a Xilinx XC3S1600E evaluation
+board, requiring that switches and LEDs be interfaced.
 
 
 ## Source files:
