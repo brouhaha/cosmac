@@ -482,7 +482,7 @@ begin
     ie_sel <= ie_sel_hold;
     xp_sel <= xp_sel_hold;
     adder_opb_sel <= adder_opb_sel_1;
-    sc <= state_execute;
+    sc <= sc_execute;
     next_state <= state;
     
     -- control outputs based on state, ir:
