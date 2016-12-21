@@ -21,10 +21,11 @@ while this core only requires a single clock cycle.
 The CPU core is written in synthesizable VHDL, with no vendor-specific
 constructs.
 
-Additional files are provided for a demonstration system for use in
-Xilinx FPGAs.  The demo is equivalent to a COSMAC ELF microcontroller,
-as described in a series of Popular Electronics articles in 1976.
-The demo requires that switches and LEDs be connected to the FPGA.
+Additional VHDL files are provided in the elf directory for a
+demonstration system for use in Xilinx FPGAs.  The demo is equivalent
+to a COSMAC ELF microcontroller, as described in a series of Popular
+Electronics articles in 1976.  The demo runs on a Xilinx XC3S1600E
+evaluation board, requiring that switches and LEDs be interfaced.
 
 
 ## Source files:
@@ -35,7 +36,7 @@ CPU core:
 | -------------------- | ----------------------------------------- |
 | cosmac.vhdl          | CPU core                                  |
 
-COSMAC ELF Demonstration project for Xilinx FPGA:
+COSMAC ELF Demonstration project for Xilinx FPGA, in elf directory:
 
 | Filename             | Description                               |
 | -------------------- | ----------------------------------------- |
