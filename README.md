@@ -26,12 +26,9 @@ CDP1802 required eight clock cycles per machine cycle.  In a Xilinx
 XC3S1600E FPGA, the core can run with a 25 MHz clock, giving it
 performance equivalent to a 200 MHz CDP1802.
 
-Additional VHDL files are provided in the elf directory for a
-demonstration system for use in Xilinx FPGAs, and some of these source
-files are Xilinx-specific.  The demo is equivalent to a COSMAC ELF
-microcontroller, as described in a series of Popular Electronics
-articles in 1976.  The demo runs on a Xilinx XC3S1600E evaluation
-board, requiring that switches and LEDs be interfaced.
+A demonstration system equivalent to a COSMAC ELF microcomputer,
+as described in a series of Popular Electronics articles in 1976,
+is provided in the elf directory.
 
 
 ## Source files:
@@ -41,16 +38,6 @@ CPU core:
 | Filename             | Description                               |
 | -------------------- | ----------------------------------------- |
 | cosmac.vhdl          | CPU core                                  |
-
-COSMAC ELF Demonstration project for Xilinx FPGA, in elf directory:
-
-| Filename             | Description                               |
-| -------------------- | ----------------------------------------- |
-| dcm_wrapper.vhdl     | clock manager for Xilinx FPGA             |
-| debouncer.vhdl       | general purpose switch debouncer          |
-| elf_ram_256.vhdl     | 256 byte RAM using Xilinx FPGA block RAM  |
-| elf.vhdl             | top-level design                          |
-| reset_gen.vhdl       | reset generator                           |
 
 
 ## Status
@@ -70,15 +57,14 @@ The following features have not been tested:
 
 ## License information:
 
-For licensing purposes, the VHDL files both individually and
-collectively, with the exception of dcm_wrapper.vhdl, are considered a
+For licensing purposes, the cosmac.vhdl source file is considered a
 "program", licensed under the terms of the GNU General Public License
 3.0, which is provided in the file gpl-3.0.txt.  If you distribute
 this program as part of a derived work (including but not limited to
 use in an FPGA or ASIC), the license imposes obligations on you to
 make the source code for the entire work available.  No one forces you
 to accept this license, but if you choose not to accept it, nothing
-authorizes you to distribute this program.
+authorizes you to redistribute this program in any form.
 
 If you wish to use this program as part of a derived work, but without
 the obligations imposed by the GPL license, contact the author regarding
