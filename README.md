@@ -76,15 +76,15 @@ The following features have not been tested:
 
 ## License information
 
-For licensing purposes, the VHDL source files (with the exception of
-elf-s3e/dcm_wrapper.vhdl) are considered a "program", licensed under
-the terms of the GNU General Public License 3.0, which is provided in
-the file gpl-3.0.txt.  If you distribute this program as part of a
-derived work (including but not limited to use in an FPGA or ASIC),
-the license imposes obligations on you to make the source code for the
-entire work available.  No one forces you to accept this license, but
-if you choose not to accept it, nothing authorizes you to redistribute
-this program in any form.
+For licensing purposes, the VHDL source files both individually and
+collectively are considered a "program", licensed under the terms of
+the GNU General Public License 3.0, which is provided in the file
+gpl-3.0.txt.  If you distribute this program as part of a derived work
+(including but not limited to use in an FPGA or ASIC), the license
+imposes obligations on you to make the source code for the entire work
+available.  No one forces you to accept this license, but if you
+choose not to accept it, nothing authorizes you to redistribute this
+program in any form.
 
 If you wish to use this program as part of a derived work, but without
 the obligations imposed by the GPL license, contact the author
