@@ -477,7 +477,7 @@ begin
     cond_no_skip <= cond_no_skip_no_pol xor ir (3);
   end process cond_no_skip_p;
 
-  control_p: process (state, ir, dma_in_req, dma_out_req,
+  control_p: process (state, clear, wait_req, ir, dma_in_req, dma_out_req,
                       int_req, ie, cond_no_skip)
   begin  -- process control_p
     -- default control outputs:
