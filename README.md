@@ -23,40 +23,41 @@ there are separate 8-bit data bus inputs and outputs.
 
 The core executes each machine cycle in one clock cycle, whereas the
 CDP1802 required eight clock cycles per machine cycle.  In a Xilinx
-XC3S1600E FPGA, the core can run with a 25 MHz clock, giving it
-performance equivalent to a 200 MHz CDP1802.
+XC7A100T-1FGG484 FPGA, the core can run with a 62.5 MHz clock, giving it
+performance equivalent to a 500 MHz CDP1802.
 
 
 ## COSMAC ELF Demonstration system
 
 A demonstration system equivalent to a COSMAC ELF microcomputer,
 as described in a series of Popular Electronics articles in 1976,
-is provided in the elf directory.
-
-Additional hardware-specific files are needed depending on what
-FPGA you are using. For some FPGAs, suitable files are provided:
-
-| Directory | Description                                   | Status                    |
-| --------- | --------------------------------------------- | ------------------------- |
-| elf-x7    | Xilinx 7-Series FPGAs (e.g. XC7A100T-1FGG484) | tested 2017-01-01         |
+is provided.  Additional hardware-specific files are needed
+depending on what FPGA you are using. Suitable files for the
+Xilinx Artix 7 FPGA are provided.
 
 
 ## Source files
 
 CPU core:
 
-| Filename             | Description                               |
-| -------------------- | ----------------------------------------- |
-| cosmac.vhdl          | CPU core                                  |
+| Filename             | Description                                   |
+| -------------------- | --------------------------------------------- |
+| cosmac.vhdl          | CPU core                                      |
 
 
 COSMAC ELF demo:
 
-| Filename             | Description                               |
-| -------------------- | ----------------------------------------- |
-| elf.vhdl             | COSMAC ELF control and interconnect       |
-| debouncer.vhdl       | general-purpose switch debouncer          |
-| memory.vhdl          | 64KB static RAM                           |
+| Filename             | Description                                   |
+| -------------------- | --------------------------------------------- |
+| elf.vhdl             | COSMAC ELF control and interconnect           |
+| debouncer.vhdl       | general-purpose switch debouncer              |
+| memory.vhdl          | 64KB static RAM                               |
+
+FPGA-specific source files for COSMAC ELF demo:
+
+| Directory            | Description                                   |
+| -------------------- | --------------------------------------------- |
+| elf-x7               | Xilinx 7-Series FPGAs (e.g. XC7A100T-1FGG484) |
 
 
 ## Status

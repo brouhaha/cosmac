@@ -20,7 +20,12 @@ and LEDs be interfaced.
 
 These files, together with the files in the parent directory, form a
 COSMAC ELF equivalent microcomputer in a Xilinx 7-Series FPGA.  As of
-2017-01-01, this has been tested in an XC7A100T-1FGG484 FPGA.
+2017-01-01, this has been tested in an XC7A100T-1FGG484 FPGA.  The
+external clock input was 100 MHz, and a clock synthesizer in the FPGA
+was used to produce a 62.5 MHz clock to the processor core.  Since
+the core only requires one clock cycle per machine cycle, vs. eight
+clocks for the original CDP1802, it runs at the equivalent of a
+500 MHz CDP1802.
 
 
 ## Source files
