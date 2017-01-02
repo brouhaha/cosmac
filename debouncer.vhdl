@@ -24,7 +24,7 @@ architecture rtl of debouncer is
   --       https://www.xilinx.com/support/answers/57964.html
   --constant clk_period:    time := 1 sec / clk_freq;
   --constant max_count:     integer := debounce_time / clk_period;
-  constant max_count: integer := 125_000;  -- assuming 5 ms and 25 MHz
+  constant max_count: integer := 625_000;  -- assuming 10 ms and 62.5 MHz
   constant counter_width: natural := integer (ceil (log2 (real (max_count))));
 
   signal state:   std_logic;
