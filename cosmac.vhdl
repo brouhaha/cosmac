@@ -1,5 +1,5 @@
 -- COSMAC processor core
--- Copyright 2009, 2010, 2016 Eric Smith <spacewar@gmail.com>
+-- Copyright 2009, 2010, 2016, 2017 Eric Smith <spacewar@gmail.com>
 
 -- This program is free software: you can redistribute it and/or modify
 -- it under the terms of version 3 of the GNU General Public License
@@ -15,18 +15,19 @@
 
 
 -- Instruction set compatible with CDP1802
--- Not bus compatible with CDP1802
--- Single clock cycle per machine cycle
--- Single cycle synchronous bus interface with separate data in and out
+-- Not bus compatible with CDP1802:
+-- * Single clock cycle per machine cycle (vs. 8 for CDP1802)
+-- * Single cycle synchronous bus interface with separate data input and
+--   output buses, non-multiplexed address bus.
 
 library ieee;
 use ieee.std_logic_1164.all;
 use ieee.numeric_std.all;
 
 entity cosmac is
-  
   port (
     clk:         in  std_logic;
+    clk_enable:  in  std_logic := '1';
     clear:       in  std_logic;
     dma_in_req:  in  std_logic;
     dma_out_req: in  std_logic;
@@ -36,9 +37,9 @@ entity cosmac is
     data_in:     in  std_logic_vector (7 downto 0);
     data_out:    out std_logic_vector (7 downto 0);
     address:     out std_logic_vector (15 downto 0);
-    mem_read:    inout std_logic;
+    mem_read:    out std_logic;
     mem_write:   out std_logic;
-    io_port:     inout std_logic_vector (2 downto 0);  -- n0-2 in RCA docs
+    io_port:     out std_logic_vector (2 downto 0);  -- n0-2 in RCA docs
     q_out:       out std_logic;
     sc:          out std_logic_vector (1 downto 0)
   );
@@ -297,9 +298,9 @@ begin
   waiting <= '1' when (wait_req = '1') and (clear = '0')
         else '0';
 
-  r_p: process (clk)
+  r_p: process (clk_enable, clk)
   begin  -- process r_p
-    if rising_edge (clk) then
+    if clk_enable = '1' and rising_edge (clk) then
       if waiting = '0' then
         if r_write_low = '1' then
           r_low (to_integer (unsigned (r_addr))) <= r_write_data (7 downto 0);
@@ -311,9 +312,9 @@ begin
     end if;
   end process r_p;
 
-  xp_p: process (clk)
+  xp_p: process (clk_enable, clk)
   begin
-    if rising_edge (clk) then
+    if clk_enable = '1' and rising_edge (clk) then
       if waiting = '0' then
         if xp_sel = xp_sel_clear then
           p <= x"0";
@@ -337,9 +338,9 @@ begin
     end if;
   end process xp_p;
 
-  d_p: process (clk)
+  d_p: process (clk_enable, clk)
   begin
-    if rising_edge (clk) then
+    if clk_enable = '1' and rising_edge (clk) then
       if waiting = '0' then
         if d_sel = d_sel_data_in then
           d <= data_in;
@@ -358,9 +359,9 @@ begin
     end if;
   end process d_p;
 
-  df_p: process (clk)
+  df_p: process (clk_enable, clk)
   begin
-    if rising_edge (clk) then
+    if clk_enable = '1' and rising_edge (clk) then
       if waiting = '0' then
         if df_sel = df_sel_carry then
           df <= alu_sum (8);
@@ -375,9 +376,9 @@ begin
     end if;
   end process df_p;
 
-  ir_p: process (clk)
+  ir_p: process (clk_enable, clk)
   begin
-    if rising_edge (clk) then
+    if clk_enable = '1' and rising_edge (clk) then
       if waiting = '0' then
         if load_ir = '1' then
           ir <= data_in;
@@ -386,9 +387,9 @@ begin
     end if;
   end process ir_p;
 
-  t_p: process (clk)
+  t_p: process (clk_enable, clk)
   begin
-    if rising_edge (clk) then
+    if clk_enable = '1' and rising_edge (clk) then
       if waiting = '0' then
         if load_t = '1' then
           t <= x & p;
@@ -397,9 +398,9 @@ begin
     end if;
   end process t_p;
 
-  q_p: process (clk)
+  q_p: process (clk_enable, clk)
   begin
-    if rising_edge (clk) then
+    if clk_enable = '1' and rising_edge (clk) then
       if waiting = '0' then
         if q_sel = q_sel_0 then
           q <= '0';
@@ -414,9 +415,9 @@ begin
     end if;
   end process q_p;
 
-  ie_p: process (clk)
+  ie_p: process (clk_enable, clk)
   begin
-    if rising_edge (clk) then
+    if clk_enable = '1' and rising_edge (clk) then
       if waiting = '0' then
         if ie_sel = ie_sel_0 then
           ie <= '0';
@@ -431,9 +432,9 @@ begin
     end if;
   end process ie_p;
 
-  prev_data_in_p: process (clk)
+  prev_data_in_p: process (clk_enable, clk)
   begin
-    if rising_edge (clk) then
+    if clk_enable = '1' and rising_edge (clk) then
       if waiting = '0' then
         prev_data_in <= data_in;
       end if;
@@ -869,9 +870,9 @@ begin
     end case;
   end process control_p;
   
-  state_p: process (clk)
+  state_p: process (clk_enable, clk)
   begin
-    if rising_edge (clk) then
+    if clk_enable = '1' and rising_edge (clk) then
       if clear = '1' and wait_req = '0' then
         state <= state_clear;
       elsif waiting = '0' then
