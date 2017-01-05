@@ -25,6 +25,10 @@ use ieee.std_logic_1164.all;
 use ieee.numeric_std.all;
 
 entity cosmac is
+  generic (extended_instructions: boolean := false);
+  -- Note that even when extended_instructions = true, the
+  -- timer/counter, cie, xie, and decimal instructions
+  -- are not presently implemented.
   port (
     clk:         in  std_logic;
     clk_enable:  in  std_logic := '1';
@@ -107,6 +111,47 @@ architecture rtl of cosmac is
   constant inst_shl:  byte_t := x"fe";
   constant inst_smi:  byte_t := x"ff";
 
+  -- two-byte instructions for 1804, 1804A, 1805A, 1806A
+  -- these follow an x"68" prefix
+
+  constant inst2_stpc: byte_t := x"00"; -- stop counter
+  constant inst2_dtc:  byte_t := x"01"; -- decrement timer/counter
+  constant inst2_spm2: byte_t := x"02"; -- set pulse width mode 2 and start
+  constant inst2_scm2: byte_t := x"03"; -- set counter mode 2 and start
+  constant inst2_spm1: byte_t := x"04"; -- set pulse width mode 1 and start
+  constant inst2_scm1: byte_t := x"05"; -- set counter mode 1 and start
+  constant inst2_ldc:  byte_t := x"06"; -- load counter
+  constant inst2_stm:  byte_t := x"07"; -- set timer mode and start
+  constant inst2_gec:  byte_t := x"08"; -- get counter
+  constant inst2_etq:  byte_t := x"09"; -- enable toggle q
+  constant inst2_xie:  byte_t := x"0a"; -- external interrupt enable
+  constant inst2_xid:  byte_t := x"0b"; -- external interrupt disable
+  constant inst2_cie:  byte_t := x"0c"; -- counter interrupt enable
+  constant inst2_cid:  byte_t := x"0d"; -- counter interrupt disable
+  constant inst2_bci:  byte_t := x"3e"; -- short branch on counter interrupt
+  constant inst2_bxi:  byte_t := x"3f"; -- short branch on xternal interrupt
+
+  -- other extended instructions
+  constant inst2_dbnz: byte_t := x"2" & "XXXX"; -- decrement and branch if non-zero
+  constant inst2_rlxa: byte_t := x"6" & "XXXX"; -- register load via X and advance
+  constant inst2_scal: byte_t := x"8" & "XXXX"; -- standard call
+  constant inst2_sret: byte_t := x"9" & "XXXX"; -- standard return
+  constant inst2_rsxd: byte_t := x"a" & "XXXX"; -- register store via X and decrement
+  constant inst2_rnx:  byte_t := x"b" & "XXXX"; -- register n to register x copy
+  constant inst2_rldi: byte_t := x"c" & "XXXX"; -- register load immediate
+
+  -- two byte instructions for 1804A, 1805A, 1806A (not 1804)
+  -- these follow an x"68" prefix
+  constant inst2_dadc: byte_t := x"74"; -- decimal add with carry
+  constant inst2_dsav: byte_t := x"76"; -- save T, D, DF
+  constant inst2_dsmb: byte_t := x"77"; -- decimal subtract memory with borrow
+  constant inst2_daci: byte_t := x"7c"; -- decimal add with carry, immediate
+  constant inst2_dsbi: byte_t := x"7f"; -- decimal subtract memory with borrow, immediate
+  constant inst2_dadd: byte_t := x"f4"; -- decimal add
+  constant inst2_dsm:  byte_t := x"f7"; -- decimal subtract memory
+  constant inst2_dadi: byte_t := x"fc"; -- decimal add immediate
+  constant inst2_dsmi: byte_t := x"ff"; -- decimal subtract memory, immediate
+
   constant sc_fetch:     std_logic_vector (1 downto 0) := "00";
   constant sc_execute:   std_logic_vector (1 downto 0) := "01";
   constant sc_dma:       std_logic_vector (1 downto 0) := "10";
@@ -115,15 +160,23 @@ architecture rtl of cosmac is
   -- CPU registers
   signal state: std_logic_vector (3 downto 0);
   signal next_state: std_logic_vector (3 downto 0);
-  constant state_clear:       std_logic_vector (3 downto 0) := "0000";  -- sc_execute
-  constant state_clear_2:     std_logic_vector (3 downto 0) := "0001";  -- sc_execute
-  constant state_load:        std_logic_vector (3 downto 0) := "0010";  -- sc_execute
-  constant state_fetch:       std_logic_vector (3 downto 0) := "0011";  -- sc_fetch
-  constant state_execute:     std_logic_vector (3 downto 0) := "0100";  -- sc_execute
-  constant state_execute_2:   std_logic_vector (3 downto 0) := "0101";  -- sc_execute
-  constant state_dma_in:      std_logic_vector (3 downto 0) := "0110";  -- sc_dma
-  constant state_dma_out:     std_logic_vector (3 downto 0) := "0111";  -- sc_dma
-  constant state_interrupt:   std_logic_vector (3 downto 0) := "1000";  -- sc_interrupt
+  constant state_fetch:        std_logic_vector (3 downto 0) := "0000";  -- sc_fetch
+  constant state_execute:      std_logic_vector (3 downto 0) := "0001";  -- sc_execute
+  constant state_execute_2:    std_logic_vector (3 downto 0) := "0010";  -- sc_execute
+  constant state_execute_3:    std_logic_vector (3 downto 0) := "0011";  -- sc_execute
+  constant state_execute_4:    std_logic_vector (3 downto 0) := "0100";  -- sc_execute
+  constant state_execute_5:    std_logic_vector (3 downto 0) := "0101";  -- sc_execute
+  constant state_execute_6:    std_logic_vector (3 downto 0) := "0110";  -- sc_execute
+  constant state_execute_7:    std_logic_vector (3 downto 0) := "0111";  -- sc_execute
+  constant state_execute_8:    std_logic_vector (3 downto 0) := "1000";  -- sc_execute
+  constant state_execute_9:    std_logic_vector (3 downto 0) := "1001";  -- sc_execute
+  constant state_clear:        std_logic_vector (3 downto 0) := "1010";  -- sc_execute
+  constant state_clear_2:      std_logic_vector (3 downto 0) := "1011";  -- sc_execute
+  constant state_load:         std_logic_vector (3 downto 0) := "1100";  -- sc_execute
+  constant state_interrupt:    std_logic_vector (3 downto 0) := "1101";  -- sc_interrupt
+  constant state_dma_in:       std_logic_vector (3 downto 0) := "1110";  -- sc_dma
+  constant state_dma_out:      std_logic_vector (3 downto 0) := "1111";  -- sc_dma
+
 
   signal r_low:   byte_register_file_t := (others => "00000000");
   signal r_high:  byte_register_file_t := (others => "00000000");
@@ -138,9 +191,14 @@ architecture rtl of cosmac is
   signal x:  nibble_t;
   signal p:  nibble_t;
 
-  signal t:  byte_t;                    -- holds old X, P after interrupt
+  signal t:  byte_t;                    -- top byte of temp
+					-- holds old X, P after interrupt
+  signal b:  byte_t;                    -- bottom byte of temp
 
-  signal ie:  std_logic;                -- interrupt enable
+  signal mie:  std_logic;               -- master interrupt enable
+                                        -- was just called "ie" on 1802,
+                                        -- changed to "mie" on 1804/5/6 to
+                                        -- distinguish from cie and xie
   signal q:  std_logic;                 -- output flip-flop
 
   -- other data path signals
@@ -158,6 +216,8 @@ architecture rtl of cosmac is
 
   signal adder_opb:        word_t;
   signal adder_result:     word_t;
+  signal adder_result_zero:      std_logic;
+  signal prev_adder_result_zero: std_logic;
 
   signal alu_carry_in:   unsigned (0 downto 0);
   signal alu_op_d:       unsigned (8 downto 0);
@@ -180,11 +240,12 @@ architecture rtl of cosmac is
   constant r_addr_sel_0 : std_logic_vector (2 downto 0) := "100";
 
   signal r_write_data_sel: std_logic_vector (2 downto 0);
-  constant r_write_data_sel_adder:   std_logic_vector (2 downto 0) := "000";
-  constant r_write_data_sel_branch:  std_logic_vector (2 downto 0) := "001";
-  constant r_write_data_sel_d:       std_logic_vector (2 downto 0) := "010";
-  constant r_write_data_sel_data_in: std_logic_vector (2 downto 0) := "011";
-  constant r_write_data_sel_0:       std_logic_vector (2 downto 0) := "100";
+  constant r_write_data_sel_adder:     std_logic_vector (2 downto 0) := "000";
+  constant r_write_data_sel_branch:    std_logic_vector (2 downto 0) := "001";
+  constant r_write_data_sel_d:         std_logic_vector (2 downto 0) := "010";
+  constant r_write_data_sel_data_in:   std_logic_vector (2 downto 0) := "011";
+  constant r_write_data_sel_0:         std_logic_vector (2 downto 0) := "100";
+  constant r_write_data_sel_tb:        std_logic_vector (2 downto 0) := "101";
 
   signal r_write_low:   std_logic;
   signal r_write_high:  std_logic;
@@ -192,7 +253,8 @@ architecture rtl of cosmac is
   signal data_out_sel: std_logic_vector (1 downto 0);
   constant data_out_sel_d:  std_logic_vector (1 downto 0) := "00";
   constant data_out_sel_xp: std_logic_vector (1 downto 0) := "01";  -- mark
-  constant data_out_sel_t:  std_logic_vector (1 downto 0) := "10";  -- sav
+  constant data_out_sel_t:  std_logic_vector (1 downto 0) := "10";  -- sav, dsav, scal, rsxd
+  constant data_out_sel_b:  std_logic_vector (1 downto 0) := "11";  -- scal, rsxd
 
   signal d_sel: std_logic_vector (2 downto 0);
   constant d_sel_hold:     std_logic_vector (2 downto 0) := "000";
@@ -217,11 +279,11 @@ architecture rtl of cosmac is
   constant xp_sel_sep:       std_logic_vector (2 downto 0) := "101";  -- p<=n
   constant xp_sel_sex:       std_logic_vector (2 downto 0) := "110";  -- x<=n
 
-  signal ie_sel: std_logic_vector (1 downto 0);
-  constant ie_sel_hold:      std_logic_vector (1 downto 0) := "00";
-  constant ie_sel_not_ir0:   std_logic_vector (1 downto 0) := "01";
-  constant ie_sel_0:         std_logic_vector (1 downto 0) := "10";
-  constant ie_sel_1:         std_logic_vector (1 downto 0) := "11";
+  signal mie_sel: std_logic_vector (1 downto 0);
+  constant mie_sel_hold:     std_logic_vector (1 downto 0) := "00";
+  constant mie_sel_not_ir0:  std_logic_vector (1 downto 0) := "01";
+  constant mie_sel_0:        std_logic_vector (1 downto 0) := "10";
+  constant mie_sel_1:        std_logic_vector (1 downto 0) := "11";
 
   signal q_sel: std_logic_vector (1 downto 0);
   constant q_sel_hold:       std_logic_vector (1 downto 0) := "00";
@@ -230,7 +292,17 @@ architecture rtl of cosmac is
   constant q_sel_1:          std_logic_vector (1 downto 0) := "11";
 
   signal load_ir:            std_logic;      -- true to load IR from data in
-  signal load_t:             std_logic;      -- true to load T from X & P
+
+  signal t_sel: std_logic_vector (1 downto 0);
+  constant t_sel_hold:       std_logic_vector (1 downto 0) := "00";
+  constant t_sel_xp:         std_logic_vector (1 downto 0) := "01";
+  constant t_sel_reg_high:   std_logic_vector (1 downto 0) := "10";
+  constant t_sel_mem:        std_logic_vector (1 downto 0) := "11";
+
+  signal b_sel: std_logic_vector (1 downto 0);
+  constant b_sel_hold:       std_logic_vector (1 downto 0) := "00";
+  constant b_sel_reg_low:    std_logic_vector (1 downto 0) := "10";
+  constant b_sel_mem:        std_logic_vector (1 downto 0) := "11";
 
   signal adder_opb_sel: std_logic_vector (1 downto 0);
   constant adder_opb_sel_0:    std_logic_vector (1 downto 0) := "00";
@@ -251,6 +323,9 @@ begin
           else x"0000";
 
   adder_result <= std_logic_vector (unsigned (r_read_data) + unsigned (adder_opb));
+
+  adder_result_zero <= '1' when adder_result = (15 downto 0 => '0')
+                  else '0';
 
   r_read_data_byte <= r_read_data (15 downto 8) when ir (4) = '1'
                  else r_read_data (7 downto 0);
@@ -287,10 +362,12 @@ begin
              else d & d when r_write_data_sel = r_write_data_sel_d
              else x"0000" when r_write_data_sel = r_write_data_sel_0
              else prev_data_in & data_in when r_write_data_sel = r_write_data_sel_branch and cond_branch = '1'
+             else t & b when extended_instructions and r_write_data_sel = r_write_data_sel_tb
              else adder_result;
 
-  data_out <= x & p when data_out_sel = data_out_sel_xp  -- mark
-              else t when data_out_sel = data_out_sel_t  -- sav
+  data_out <= x & p when data_out_sel = data_out_sel_xp
+              else t when data_out_sel = data_out_sel_t
+              else b when extended_instructions and data_out_sel = data_out_sel_b
               else d;
 
   io_port <= n (2 downto 0) when state = state_execute and i = inst_out (7 downto 4) else "000";
@@ -391,12 +468,33 @@ begin
   begin
     if clk_enable = '1' and rising_edge (clk) then
       if waiting = '0' then
-        if load_t = '1' then
+        if t_sel = t_sel_xp then
           t <= x & p;
+        elsif extended_instructions and t_sel = t_sel_reg_high then
+          t <= r_read_data (15 downto 8);
+        elsif extended_instructions and t_sel = t_sel_mem then
+          t <= data_in;
+        else
+          null;                           -- t_sel_hold: t unchanged
         end if;
       end if;
     end if;
   end process t_p;
+
+  b_p: process (clk_enable, clk)
+  begin
+    if clk_enable = '1' and rising_edge (clk) then
+      if extended_instructions and waiting = '0' then
+        if b_sel = b_sel_reg_low then
+          b <= r_read_data (7 downto 0);
+        elsif b_sel = b_sel_mem then
+          b <= data_in;
+        else
+          null;                           -- b_sel_hold: b unchanged
+        end if;
+      end if;
+    end if;
+  end process b_p;
 
   q_p: process (clk_enable, clk)
   begin
@@ -415,22 +513,22 @@ begin
     end if;
   end process q_p;
 
-  ie_p: process (clk_enable, clk)
+  mie_p: process (clk_enable, clk)
   begin
     if clk_enable = '1' and rising_edge (clk) then
       if waiting = '0' then
-        if ie_sel = ie_sel_0 then
-          ie <= '0';
-        elsif ie_sel = ie_sel_1 then
-          ie <= '1';
-        elsif ie_sel = ie_sel_not_ir0 then
-          ie <= not ir (0);
+        if mie_sel = mie_sel_0 then
+          mie <= '0';
+        elsif mie_sel = mie_sel_1 then
+          mie <= '1';
+        elsif mie_sel = mie_sel_not_ir0 then
+          mie <= not ir (0);
         else
-          null;                           -- ie_sel_hold: ie unchanged
+          null;                           -- mie_sel_hold: mie unchanged
         end if;
       end if;
     end if;
-  end process ie_p;
+  end process mie_p;
 
   prev_data_in_p: process (clk_enable, clk)
   begin
@@ -440,6 +538,15 @@ begin
       end if;
     end if;
   end process prev_data_in_p;
+
+  prev_adder_result_zero_p: process (clk_enable, clk)
+  begin
+    if clk_enable = '1' and rising_edge (clk) then
+      if waiting = '0' then
+        prev_adder_result_zero <= adder_result_zero;
+      end if;
+    end if;
+  end process prev_adder_result_zero_p;
 
   d_zero <= '1' when d = x"00" else '0';
 
@@ -460,13 +567,13 @@ begin
     cond_branch <= cond_branch_no_pol xor ir (3);
   end process cond_branch_p;
     
-  cond_no_skip_p: process (ir, ie, q, d_zero, df)
+  cond_no_skip_p: process (ir, mie, q, d_zero, df)
     variable cond_no_skip_no_pol: std_logic;
   begin
     case ir (1 downto 0) is
       when "00" =>
         if ir (3) = '1' then
-          cond_no_skip_no_pol := ie;
+          cond_no_skip_no_pol := mie;
         else
           cond_no_skip_no_pol := '1';
         end if;
@@ -479,7 +586,7 @@ begin
   end process cond_no_skip_p;
 
   control_p: process (state, clear, wait_req, ir, dma_in_req, dma_out_req,
-                      int_req, ie, cond_no_skip)
+                      int_req, mie, cond_no_skip, prev_adder_result_zero)
   begin  -- process control_p
     -- default control outputs:
     r_addr_sel <= r_addr_sel_p;
@@ -492,9 +599,10 @@ begin
     d_sel <= d_sel_hold;
     df_sel <= df_sel_hold;
     load_ir <= '0';
-    load_t <= '0';
+    t_sel <= t_sel_hold;
+    b_sel <= b_sel_hold;
     q_sel <= q_sel_hold;
-    ie_sel <= ie_sel_hold;
+    mie_sel <= mie_sel_hold;
     xp_sel <= xp_sel_hold;
     adder_opb_sel <= adder_opb_sel_1;
     sc <= sc_execute;
@@ -506,9 +614,10 @@ begin
         sc <= sc_execute;
         next_state <= state_clear_2;
         d_sel <= d_sel_0;
+        t_sel <= t_sel_xp;
         xp_sel <= xp_sel_clear;
         q_sel <= q_sel_0;
-        ie_sel <= ie_sel_1;
+        mie_sel <= mie_sel_1;
         r_addr_sel <= r_addr_sel_0;
         r_write_data_sel <= r_write_data_sel_0;
         r_write_high <= '1';
@@ -549,7 +658,7 @@ begin
           r_write_low <= '1';
           next_state <= state_dma_out;
         elsif clear = '0' then
-          -- We don't need to explicity handle the transition from
+          -- We don't need to explicitly handle the transition from
           -- load to reset, but we do need to handle a transition
           -- from load to run, forcing a reset.
           next_state <= state_clear;
@@ -574,7 +683,7 @@ begin
           next_state <= state_dma_in;
         elsif dma_out_req = '1' then
           next_state <= state_dma_out;
-        elsif int_req = '1' and ie = '1' then
+        elsif int_req = '1' and mie = '1' then
           next_state <= state_interrupt;
         elsif ir = inst_idl then
           next_state <= state_execute;
@@ -644,12 +753,22 @@ begin
 --          mem_read <= '1';
 --          load_ir <= '1';
         elsif i = inst_inp (7 downto 4) and n (3) = '1' then
-          -- inp
-          -- Note: also handle undefined opcode 68 here, which is used
-          -- as an extended opcode prefix in the 1804/05/06.
-          r_addr_sel <= r_addr_sel_x;
-          mem_write <= '1';
-          d_sel <= d_sel_data_in;
+          if extended_instructions and n (2 downto 0) = "000" then
+            -- 68 extended opcode prefix, fetch second byte of opcode
+            next_state <= state_execute_2;
+            r_addr_sel <= r_addr_sel_p;
+            adder_opb_sel <= adder_opb_sel_1;
+            r_write_data_sel <= r_write_data_sel_adder;
+            r_write_high <= '1';
+            r_write_low <= '1';
+            mem_read <= '1';
+            load_ir <= '1';
+          else
+            -- inp
+            r_addr_sel <= r_addr_sel_x;
+            mem_write <= '1';
+            d_sel <= d_sel_data_in;
+          end if;
         elsif ir = inst_ret or ir = inst_dis then
           r_addr_sel <= r_addr_sel_x;
           adder_opb_sel <= adder_opb_sel_1;
@@ -658,7 +777,7 @@ begin
           r_write_low <= '1';
           mem_read <= '1';
           xp_sel <= xp_sel_data_in;
-          ie_sel <= ie_sel_not_ir0;
+          mie_sel <= mie_sel_not_ir0;
         elsif ir = inst_ldxa then
           r_addr_sel <= r_addr_sel_x;
           adder_opb_sel <= adder_opb_sel_1;
@@ -695,7 +814,7 @@ begin
           r_write_high <= '1';
           r_write_low <= '1';
           data_out_sel <= data_out_sel_xp;
-          load_t <= '1';
+          t_sel <= t_sel_xp;
           xp_sel <= xp_sel_mark;
         elsif ir = inst_req or ir = inst_seq then
           q_sel <= q_sel_ir0;
@@ -784,12 +903,56 @@ begin
           next_state <= state_dma_in;
         elsif dma_out_req = '1' then
           next_state <= state_dma_out;
-        elsif int_req = '1' and ie = '1' then
+        elsif int_req = '1' and mie = '1' then
           next_state <= state_interrupt;
         else
           next_state <= state_fetch;
         end if;
-        if ir (2) = '0' then
+        if extended_instructions and ir = inst_extend then
+          sc <= sc_execute;
+          if i = inst2_dbnz (7 downto 4) then
+            r_addr_sel <= r_addr_sel_n;
+            adder_opb_sel <= adder_opb_sel_m1;
+            r_write_data_sel <= r_write_data_sel_adder;
+            r_write_high <= '1';
+            r_write_low <= '1';
+            next_state <= state_execute_3;
+          elsif i = inst2_rlxa (7 downto 4) then
+            r_addr_sel <= r_addr_sel_x;
+            adder_opb_sel <= adder_opb_sel_1;
+            r_write_data_sel <= r_write_data_sel_adder;
+            r_write_high <= '1';
+            r_write_low <= '1';
+            t_sel <= t_sel_mem;
+            next_state <= state_execute_3;
+          elsif ir = inst2_dsav then
+            r_addr_sel <= r_addr_sel_x;
+            adder_opb_sel <= adder_opb_sel_m1;
+            r_write_data_sel <= r_write_data_sel_adder;
+            r_write_high <= '1';
+            r_write_low <= '1';
+            next_state <= state_execute_3;
+          elsif i = inst2_scal (7 downto 4) or
+                i = inst2_sret (7 downto 4) or
+                i = inst2_rsxd (7 downto 4) or
+                i = inst2_rnx  (7 downto 4) then
+            r_addr_sel <= r_addr_sel_n;
+            t_sel <= t_sel_reg_high;
+            b_sel <= b_sel_reg_low;
+            next_state <= state_execute_3;
+          elsif i = inst2_rldi (7 downto 4) then
+            r_addr_sel <= r_addr_sel_p;
+            adder_opb_sel <= adder_opb_sel_1;
+            r_write_data_sel <= r_write_data_sel_adder;
+            r_write_high <= '1';
+            r_write_low <= '1';
+            mem_read <= '1';
+            t_sel <= t_sel_mem;
+            next_state <= state_execute_3;
+          else
+            next_state <= state_fetch;  -- illegal two-byte instruction
+          end if;
+        elsif ir (2) = '0' then
           -- second execute cycle of long branch
 	  r_addr_sel <= r_addr_sel_p;
 	  r_write_data_sel <= r_write_data_sel_branch;
@@ -798,15 +961,250 @@ begin
           mem_read <= '1';
         else
           -- second execute cycle of long skip
+          r_addr_sel <= r_addr_sel_p;
+          if cond_no_skip = '1' then
+            adder_opb_sel <= adder_opb_sel_0;
+          else
+            adder_opb_sel <= adder_opb_sel_1;
+          end if;
+          r_write_data_sel <= r_write_data_sel_adder;
+          r_write_high <= '1';
+          r_write_low <= '1';
+        end if;
+      when state_execute_3 =>
+        next_state <= state_fetch; -- shouldn't need this
+        if extended_instructions then
+          sc <= sc_execute;
+          if i = inst2_dbnz (7 downto 4) then
+            -- get high byte of branch target
             r_addr_sel <= r_addr_sel_p;
-	    if cond_no_skip = '1' then
-	      adder_opb_sel <= adder_opb_sel_0;
-	    else
-	      adder_opb_sel <= adder_opb_sel_1;
-            end if;
+            adder_opb_sel <= adder_opb_sel_1;
 	    r_write_data_sel <= r_write_data_sel_adder;
             r_write_high <= '1';
             r_write_low <= '1';
+            mem_read <= '1';
+            next_state <= state_execute_4;
+          elsif i = inst2_rlxa (7 downto 4) then
+            r_addr_sel <= r_addr_sel_x;
+            adder_opb_sel <= adder_opb_sel_1;
+            r_write_data_sel <= r_write_data_sel_adder;
+            r_write_high <= '1';
+            r_write_low <= '1';
+            b_sel <= b_sel_mem;
+            next_state <= state_execute_4;
+          elsif ir = inst2_dsav then
+            r_addr_sel <= r_addr_sel_x;
+            adder_opb_sel <= adder_opb_sel_m1;
+            r_write_data_sel <= r_write_data_sel_adder;
+            r_write_high <= '1';
+            r_write_low <= '1';
+            data_out_sel <= data_out_sel_t;
+            mem_write <= '1';
+            next_state <= state_execute_4;
+          elsif i = inst2_scal (7 downto 4) then
+            r_addr_sel <= r_addr_sel_x;
+            adder_opb_sel <= adder_opb_sel_m1;
+            r_write_data_sel <= r_write_data_sel_adder;
+            r_write_high <= '1';
+            r_write_low <= '1';
+            data_out_sel <= data_out_sel_t;
+            mem_write <= '1';
+            next_state <= state_execute_4;
+          elsif i = inst2_sret (7 downto 4) then
+            r_addr_sel <= r_addr_sel_x;
+            adder_opb_sel <= adder_opb_sel_1;
+            r_write_data_sel <= r_write_data_sel_adder;
+            r_write_high <= '1';
+            r_write_low <= '1';
+            next_state <= state_execute_4;
+          elsif i = inst2_rsxd (7 downto 4) then
+            r_addr_sel <= r_addr_sel_x;
+            adder_opb_sel <= adder_opb_sel_m1;
+            r_write_data_sel <= r_write_data_sel_adder;
+            r_write_high <= '1';
+            r_write_low <= '1';
+            data_out_sel <= data_out_sel_t;
+            mem_write <= '1';
+            next_state <= state_execute_4;
+          elsif i = inst2_rnx (7 downto 4) then
+            r_addr_sel <= r_addr_sel_x;
+            r_write_data_sel <= r_write_data_sel_tb;
+            r_write_high <= '1';
+            r_write_low <= '1';
+            next_state <= state_fetch;
+          elsif i = inst2_rldi (7 downto 4) then
+            r_addr_sel <= r_addr_sel_p;
+            adder_opb_sel <= adder_opb_sel_1;
+            r_write_data_sel <= r_write_data_sel_adder;
+            r_write_high <= '1';
+            r_write_low <= '1';
+            mem_read <= '1';
+            b_sel <= b_sel_mem;
+            next_state <= state_execute_4;
+          end if;
+        end if;
+      when state_execute_4 =>
+        next_state <= state_fetch; -- shouldn't need this
+        if extended_instructions then
+          sc <= sc_execute;
+          if i = inst2_dbnz (7 downto 4) then
+            if prev_adder_result_zero = '1' then
+              -- decremented Rn was 0, take branch
+              r_addr_sel <= r_addr_sel_p;
+              r_write_data_sel <= r_write_data_sel_branch;
+              r_write_high <= '1';
+              r_write_low <= '1';
+              mem_read <= '1';
+            else
+              -- decremented Rn was non-zero, no branch
+              r_addr_sel <= r_addr_sel_p;
+              adder_opb_sel <= adder_opb_sel_1;
+              r_write_data_sel <= r_write_data_sel_adder;
+              r_write_high <= '1';
+              r_write_low <= '1';
+            end if;
+            next_state <= state_fetch;
+          elsif i = inst2_rlxa (7 downto 4) then
+            r_addr_sel <= r_addr_sel_n;
+            r_write_data_sel <= r_write_data_sel_tb;
+            r_write_high <= '1';
+            r_write_low <= '1';
+            next_state <= state_fetch;
+          elsif ir = inst2_dsav then
+            r_addr_sel <= r_addr_sel_x;
+            adder_opb_sel <= adder_opb_sel_m1;
+            r_write_data_sel <= r_write_data_sel_adder;
+            r_write_high <= '1';
+            r_write_low <= '1';
+            data_out_sel <= data_out_sel_d;
+            mem_write <= '1';
+            -- shift D right with carry
+            d_sel <= d_sel_shifter;
+            df_sel <= df_sel_d0;
+            next_state <= state_execute_5;
+          elsif i = inst2_scal (7 downto 4) then
+            r_addr_sel <= r_addr_sel_x;
+            adder_opb_sel <= adder_opb_sel_m1;
+            r_write_data_sel <= r_write_data_sel_adder;
+            r_write_high <= '1';
+            r_write_low <= '1';
+            data_out_sel <= data_out_sel_b;
+            mem_write <= '1';
+            next_state <= state_execute_5;
+          elsif i = inst2_sret (7 downto 4) then
+            r_addr_sel <= r_addr_sel_p;
+            r_write_data_sel <= r_write_data_sel_tb;
+            r_write_high <= '1';
+            r_write_low <= '1';
+            next_state <= state_execute_5;
+          elsif i = inst2_rsxd (7 downto 4) then
+            r_addr_sel <= r_addr_sel_x;
+            adder_opb_sel <= adder_opb_sel_m1;
+            r_write_data_sel <= r_write_data_sel_adder;
+            r_write_high <= '1';
+            r_write_low <= '1';
+            data_out_sel <= data_out_sel_b;
+            mem_write <= '1';
+            next_state <= state_fetch;
+          elsif i = inst2_rldi (7 downto 4) then
+            r_addr_sel <= r_addr_sel_n;
+            r_write_data_sel <= r_write_data_sel_tb;
+            r_write_high <= '1';
+            r_write_low <= '1';
+            -- CDP 1804A datasheet erroneously shows RP->RP+1 also happening
+            -- in this cycle.
+            next_State <= state_fetch;
+          end if;
+        end if;
+      when state_execute_5 =>
+        next_state <= state_fetch; -- shouldn't need this
+        if extended_instructions then
+          elsif ir = inst2_dsav then
+            r_addr_sel <= r_addr_sel_x;
+            adder_opb_sel <= adder_opb_sel_m1;
+            r_write_data_sel <= r_write_data_sel_adder;
+            r_write_high <= '1';
+            r_write_low <= '1';
+            data_out_sel <= data_out_sel_d;
+            mem_write <= '1';
+            next_state <= state_fetch;
+          if i = inst2_scal (7 downto 4) then
+            sc <= sc_execute;
+            r_addr_sel <= r_addr_sel_p;
+            t_sel <= t_sel_reg_high;
+            b_sel <= b_sel_reg_low;
+            next_state <= state_execute_6;
+          elsif i = inst2_sret (7 downto 4) then
+            r_addr_sel <= r_addr_sel_x;
+            adder_opb_sel <= adder_opb_sel_1;
+            r_write_data_sel <= r_write_data_sel_adder;
+            r_write_high <= '1';
+            r_write_low <= '1';
+            t_sel <= t_sel_mem;
+            next_state <= state_execute_6;
+          end if;
+        end if;
+      when state_execute_6 =>
+        next_state <= state_fetch; -- shouldn't need this
+        if extended_instructions then
+          if i = inst2_scal (7 downto 4) then
+            sc <= sc_execute;
+            r_addr_sel <= r_addr_sel_n;
+            r_write_data_sel <= r_write_data_sel_tb;
+            r_write_high <= '1';
+            r_write_low <= '1';
+            next_state <= state_execute_7;
+          elsif i = inst2_sret (7 downto 4) then
+            r_addr_sel <= r_addr_sel_x;
+            b_sel <= b_sel_mem;
+            next_state <= state_execute_7;
+          end if;
+        end if;
+      when state_execute_7 =>
+        next_state <= state_fetch; -- shouldn't need this
+        if extended_instructions then
+          if i = inst2_scal (7 downto 4) then
+            sc <= sc_execute;
+            r_addr_sel <= r_addr_sel_n;
+            t_sel <= t_sel_reg_high;
+            adder_opb_sel <= adder_opb_sel_1;
+            r_write_data_sel <= r_write_data_sel_adder;
+            r_write_high <= '1';
+            r_write_low <= '1';
+            next_state <= state_execute_8;
+          elsif i = inst2_sret (7 downto 4) then
+            r_addr_sel <= r_addr_sel_n;
+            r_write_data_sel <= r_write_data_sel_tb;
+            r_write_high <= '1';
+            r_write_low <= '1';
+            next_state <= state_fetch;
+          end if;
+        end if;
+      when state_execute_8 =>
+        next_state <= state_fetch; -- shouldn't need this
+        if extended_instructions then
+          if i = inst2_scal (7 downto 4) then
+            sc <= sc_execute;
+            r_addr_sel <= r_addr_sel_n;
+            b_sel <= b_sel_reg_low;
+            adder_opb_sel <= adder_opb_sel_1;
+            r_write_data_sel <= r_write_data_sel_adder;
+            r_write_high <= '1';
+            r_write_low <= '1';
+            next_state <= state_execute_9;
+          end if;
+        end if;
+      when state_execute_9 =>
+        next_state <= state_fetch; -- shouldn't need this
+        if extended_instructions then
+          if i = inst2_scal (7 downto 4) then
+            sc <= sc_execute;
+            r_addr_sel <= r_addr_sel_p;
+            r_write_data_sel <= r_write_data_sel_tb;
+            r_write_high <= '1';
+            r_write_low <= '1';
+            next_state <= state_fetch;
+          end if;
         end if;
       when state_dma_in =>
         sc <= sc_dma;
@@ -824,7 +1222,7 @@ begin
           r_write_high <= '0';
           r_write_low <= '0';
           next_state <= state_load;
-        elsif int_req = '1' and ie = '1' then
+        elsif int_req = '1' and mie = '1' then
           next_state <= state_interrupt;
         else
           next_state <= state_fetch;
@@ -845,7 +1243,7 @@ begin
           r_write_high <= '0';
           r_write_low <= '0';
           next_state <= state_load;
-        elsif int_req = '1' and ie = '1' then
+        elsif int_req = '1' and mie = '1' then
           next_state <= state_interrupt;
         else
           next_state <= state_fetch;
@@ -856,14 +1254,14 @@ begin
           next_state <= state_dma_in;
         elsif dma_out_req = '1' then
           next_state <= state_dma_out;
-        --elsif int_req = '1' and ie = '1' then
+        --elsif int_req = '1' and mie = '1' then
         --  next_state <= state_interrupt;
         else
           next_state <= state_fetch;
         end if;
-        load_t <= '1';
+        t_sel <= t_sel_xp;
         xp_sel <= xp_sel_interrupt;
-        ie_sel <= ie_sel_0;
+        mie_sel <= mie_sel_0;
       when others =>
         sc <= sc_execute;
         next_state <= state_clear;      -- should never happen
