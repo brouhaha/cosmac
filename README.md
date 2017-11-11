@@ -26,6 +26,10 @@ CDP1802 required eight clock cycles per machine cycle.  In a Xilinx
 XC7A100T-1FGG484 FPGA, the core can run with a 62.5 MHz clock, giving it
 performance equivalent to a 500 MHz CDP1802.
 
+A PIXIE graphics core equivalent to the CPD1861 is also provided.  The
+PIXIE core uses a dual-port frame buffer to allow NTSC-rate video output
+independent of the CPU core clock rate.
+
 
 ## COSMAC ELF Demonstration system
 
@@ -33,7 +37,7 @@ A demonstration system equivalent to a COSMAC ELF microcomputer,
 as described in a series of Popular Electronics articles in 1976,
 is provided.  Additional hardware-specific files are needed
 depending on what FPGA you are using. Suitable files for the
-Xilinx Artix 7 FPGA are provided.
+Digilent CMOD-A7 module using the Xilinx Artix 7 FPGA are provided.
 
 
 ## Source files
@@ -45,6 +49,16 @@ CPU core:
 | cosmac.vhdl          | CPU core                                      |
 
 
+PIXIE graphics core (in "pixie" directory"):
+
+| Filename                   | Description                                   |
+| -------------------------- | --------------------------------------------- |
+| pixie_dp.vhdl              | PIXIE graphics core, top level                |
+| pixie_dp_front_end.vhdl    | front end (processor bus side)                |
+| pixie_dp_frame_buffer.vhdl | frame buffer                                  |
+| pixie_dp_back_end.vhdl     | back end (composite video output side)        |
+
+
 COSMAC ELF demo:
 
 | Filename             | Description                                   |
@@ -53,11 +67,13 @@ COSMAC ELF demo:
 | debouncer.vhdl       | general-purpose switch debouncer              |
 | memory.vhdl          | 64KB static RAM                               |
 
+
 FPGA-specific source files for COSMAC ELF demo:
 
 | Directory            | Description                                   |
 | -------------------- | --------------------------------------------- |
-| elf-x7               | Xilinx 7-Series FPGAs (e.g. XC7A100T-1FGG484) |
+| elf-cmod-a7          | Digilent CMOD-A7 module using Xilinx Artix-7  |
+| elf-x7               | (deprecated) Xilinx 7-Series FPGAs (e.g. XC7A100T-1FGG484) |
 
 
 ## Status
@@ -70,9 +86,9 @@ to work correctly:
   the core as part of a COSMAC ELF equivalent.
 
 The following features have not been tested:
-* The interrupt feature of the core and the related instructions have
-  not been tested.
-* The DMA output feature has not been tested.
+* The DMA output feature of the CPU core had had only minimal testing.
+* The interrupt feature of the CPU core and the related instructions have
+  had only minimal testing.
 
 
 ## License information
