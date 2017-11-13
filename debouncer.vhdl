@@ -10,6 +10,7 @@ entity debouncer is
   --generic (clk_freq:      real;
   --         debounce_time: time);
   port (clk:    in  std_logic;
+        clk_en: in  std_logic := '1';
         raw_sw: in  std_logic;
         deb_sw: out std_logic);
 end debouncer;
@@ -34,9 +35,9 @@ begin
 
   deb_sw <= state;
 
-  debounce_p: process (clk)
+  debounce_p: process (clk, clk_en)
   begin
-    if rising_edge (clk) then
+    if rising_edge (clk) and clk_en = '1' then
       if raw_sw = state then
         counter <= to_unsigned (max_count - 1, counter_width);
       --elsif counter = max_count - 1 then
