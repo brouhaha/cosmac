@@ -1,19 +1,3 @@
--- COSMAC ELF top level for ELF-CMOD-A7
--- Copyright 2009, 2010, 2016, 2017 Eric Smith <spacewar@gmail.com>
-
--- This program is free software: you can redistribute it and/or modify
--- it under the terms of version 3 of the GNU General Public License
--- as published by the Free Software Foundation.
-
--- This program is distributed in the hope that it will be useful,
--- but WITHOUT ANY WARRANTY; without even the implied warranty of
--- MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
--- GNU General Public License for more details.
-
--- You should have received a copy of the GNU General Public License
--- along with this program.  If not, see <http://www.gnu.org/licenses/>.
-
-
 library ieee;
 use ieee.std_logic_1164.all;
 use ieee.numeric_std.all;
@@ -24,6 +8,8 @@ use ieee.numeric_std.all;
 entity elf_cmod_a7 is
   port (clk_in:        in  std_logic;
         reset_in:      in  std_logic;
+        
+        config_sw_n:   in  std_logic_vector (1 to 6);  -- active low
         
         sw_d:          in  std_logic_vector (7 downto 0);
         sw_load_nc_n:  in  std_logic;
@@ -66,6 +52,8 @@ architecture rtl of elf_cmod_a7 is
   signal reset_cntr:           unsigned (3 downto 0);
   signal sync_reset:           std_logic;  -- to elf
   
+  signal limit_256_bytes:      std_logic;
+  
   signal sw_input:             std_logic;
   signal sw_load:              std_logic;
   signal sw_mp:                std_logic;
@@ -89,10 +77,11 @@ architecture rtl of elf_cmod_a7 is
   
 begin
 
+  limit_256_bytes <= not config_sw_n (1);
+
   sw_mp    <= not sw_mp_n;
   sw_input <= sw_input_nc_n;
   sw_load  <= sw_load_nc_n;
-  
   
   ---- divide by 256 to run Elf at normal speed
   --scd: process (sys_clk)
@@ -164,25 +153,27 @@ begin
   video_clk <= video_clk_divider (video_clk_divider'left);
 
   elf_p: entity work.elf
-    port map (clk         => sys_clk,
-              clk_enable  => sys_clk_enable,
+    port map (clk             => sys_clk,
+              clk_enable      => sys_clk_enable,
+              
+              limit_256_bytes => limit_256_bytes,
     
-              sw_input    => sw_input,
-              sw_load     => elf_load,
-              sw_mp       => sw_mp,
-              sw_run      => elf_run,
-              sw_data     => sw_d,
+              sw_input        => sw_input,
+              sw_load         => elf_load,
+              sw_mp           => sw_mp,
+              sw_run          => elf_run,
+              sw_data         => sw_d,
               
-              led_address => elf_addr,
-              led_data    => elf_data,
-              led_q       => elf_q,
+              led_address     => elf_addr,
+              led_data        => elf_data,
+              led_q           => elf_q,
 
-              video_clk   => video_clk,
-              csync       => csync,
-              video       => video,
+              video_clk       => video_clk,
+              csync           => csync,
+              video           => video,
               
-              rxd         => '1',
-              txd         => open);
+              rxd             => '1',
+              txd             => open);
 
   csync_n <= not csync;
   

@@ -9,21 +9,28 @@ entity elf is
   generic (clk_freq:      real := 25.0e6;
            debounce_time: time := 1 ms;
            uart_rate:     real := 19200.0);
-  port (clk:           in     std_logic;
+  port (clk:             in     std_logic;
+        clk_enable:      in     std_logic := '1';
+        
+        limit_256_bytes: in     std_logic := '0';
 
-        sw_input:      in     std_logic;
-        sw_load:       in     std_logic;
-        sw_mp:         in     std_logic;
-        sw_run:        in     std_logic;
+        sw_input:        in     std_logic;
+        sw_load:         in     std_logic;
+        sw_mp:           in     std_logic;
+        sw_run:          in     std_logic;
 
-        sw_data:       in     std_logic_vector(7 downto 0);
+        sw_data:         in     std_logic_vector(7 downto 0);
 
-        led_address:   out    std_logic_vector(15 downto 0);
-        led_data:      out    std_logic_vector(7 downto 0);
-        led_q:         out    std_logic;
+        led_address:     out    std_logic_vector(15 downto 0);
+        led_data:        out    std_logic_vector(7 downto 0);
+        led_q:           out    std_logic;
 
-        rxd:           in     std_logic;
-        txd:           out    std_logic);
+        video_clk:       in     std_logic;
+        csync:           out    std_logic;
+        video:           out    std_logic;
+
+        rxd:             in     std_logic;
+        txd:             out    std_logic);
 
 end elf;
 
@@ -33,7 +40,7 @@ architecture rtl of elf is
   constant switch_led_port:    std_logic_vector (2 downto 0) := "100";
   constant uart_port:          std_logic_vector (2 downto 0) := "111";
 
-  signal pixie_selected:       std_logic;
+  signal pixie_disp_on:        std_logic;
   signal switch_led_selected:  std_logic;
   signal uart_selected:        std_logic;
 
@@ -66,13 +73,24 @@ architecture rtl of elf is
 
   signal mem_write_data:       std_logic_vector (7 downto 0);
   signal mem_read_data:        std_logic_vector (7 downto 0);
-
+  
+  signal pixie_efx:            std_logic;
+  
   signal uart_reset:           std_logic;
   signal uart_rx_buf_full:     std_logic;
   signal uart_read_rx:         std_logic;
   signal uart_read_data:       std_logic_vector (7 downto 0);
   signal uart_tx_buf_empty:    std_logic;
   signal uart_load_tx:         std_logic;
+  
+  function to_std_logic (b: boolean) return std_logic is
+  begin
+    if b then
+      return '1';
+    else
+      return '0';
+    end if;
+  end function to_std_logic;
 
 begin
 
@@ -80,6 +98,7 @@ begin
     --generic map (clk_freq =>      clk_freq,
     --             debounce_time => debounce_time)
     port map (clk    => clk,
+              clk_en => clk_enable,
               raw_sw => sw_input,
               deb_sw => deb_sw_input);
 
@@ -87,6 +106,7 @@ begin
     --generic map (clk_freq =>      clk_freq,
     --             debounce_time => debounce_time)
     port map (clk    => clk,
+              clk_en => clk_enable,
               raw_sw => sw_load,
               deb_sw => deb_sw_load);
 
@@ -94,6 +114,7 @@ begin
     --generic map (clk_freq =>      clk_freq,
     --             debounce_time => debounce_time)
     port map (clk    => clk,
+              clk_en => clk_enable,
               raw_sw => sw_mp,
               deb_sw => deb_sw_mp);
 
@@ -101,6 +122,7 @@ begin
     --generic map (clk_freq =>      clk_freq,
     --             debounce_time => debounce_time)
     port map (clk    => clk,
+              clk_en => clk_enable,
               raw_sw => sw_run,
               deb_sw => deb_sw_run);
 
@@ -109,14 +131,12 @@ begin
   led_data      <= led_data_out;
   led_q         <= q_out;
 
-  dma_out_req   <= '0';
   clear_req     <= not sw_run;
-  int_req       <= '0';
   wait_req      <= sw_load;
   
-  data_led_p: process (clk)
+  data_led_p: process (clk, clk_enable)
   begin
-    if rising_edge (clk) then
+    if rising_edge (clk) and clk_enable = '1' then
       if (deb_sw_run = '0') and (deb_sw_load = '1') and (mem_read <= '1') then
         -- load mode, all memory reads
         led_data_out <= mem_read_data;
@@ -129,9 +149,9 @@ begin
 
   -- In LOAD mode, each press of INPUT switch only generates one DMA request
   -- XXX should clear dma_in_req based on (sc = sc_dma) and mem_write
-  dma_in_req_p: process (clk)
+  dma_in_req_p: process (clk, clk_enable)
   begin
-    if rising_edge (clk) then
+    if rising_edge (clk) and clk_enable = '1' then
       delayed_deb_sw_input <= deb_sw_input;
       if dma_in_req = '0' then
         if deb_sw_run = '0' and deb_sw_load = '1' and delayed_deb_sw_input = '0' and deb_sw_input = '1' then
@@ -143,39 +163,34 @@ begin
     end if;
   end process;
     
-  ef (1)        <= uart_rx_buf_full;
+  ef (1)        <= pixie_efx; -- uart_rx_buf_full;
   ef (2)        <= uart_tx_buf_empty;
   ef (3)        <= '0';
   ef (4)        <= deb_sw_input;
 
   processor: entity work.cosmac (rtl)
-             port map (clk => clk,
-
-                       clear => clear_req,
-                       dma_in_req => dma_in_req,
+             port map (clk         => clk,
+                       clk_enable  => clk_enable,
+                       clear       => clear_req,
+                       dma_in_req  => dma_in_req,
                        dma_out_req => dma_out_req,
-                       int_req => int_req,
-                       wait_req => wait_req,
+                       int_req     => int_req,
+                       wait_req    => wait_req,
 
-                       ef => ef,
+                       ef          => ef,
 
-                       data_in => proc_data_in,
-                       data_out => proc_data_out,
-                       address => address,
-                       mem_read => mem_read,
-                       mem_write => mem_write,
-                       io_port => io_port,
-                       q_out => q_out,
-                       sc => sc);
+                       data_in     => proc_data_in,
+                       data_out    => proc_data_out,
+                       address     => address,
+                       mem_read    => mem_read,
+                       mem_write   => mem_write,
+                       io_port     => io_port,
+                       q_out       => q_out,
+                       sc          => sc);
 
-  pixie_selected <= '1' when io_port = pixie_port
-              else '0';
-
-  switch_led_selected <= '1' when io_port = switch_led_port
-              else '0';
-
-  uart_selected <= '1' when io_port = uart_port
-              else '0';
+  pixie_disp_on       <= to_std_logic (io_port = pixie_port);
+  switch_led_selected <= to_std_logic (io_port = switch_led_port);
+  uart_selected       <= to_std_logic (io_port = uart_port);
 
   proc_data_in <= mem_read_data;
 
@@ -187,34 +202,52 @@ begin
                else proc_data_out;
 
   memory: entity work.memory (rtl)
-          port map (clk => clk,
-	            address => address,
- 		    mem_read => mem_read,
-		    mem_write => mem_write_gated,
-		    data_in => mem_write_data,
-		    data_out => mem_read_data);
+    port map (limit_256_bytes => limit_256_bytes,
+              clk             => clk,
+              clk_enable      => clk_enable,
+              address         => address,
+              mem_read        => mem_read,
+              mem_write       => mem_write_gated,
+              data_in         => mem_write_data,
+              data_out        => mem_read_data);
+
+  pixie: entity work.pixie_dp (rtl)
+    port map (clk        => clk,
+              clk_enable => clk_enable,
+              reset      => clear_req,
+              sc         => sc,
+              disp_on    => pixie_disp_on,
+              disp_off   => '0',
+              data       => mem_read_data,
+
+              dmao       => dma_out_req,
+              int        => int_req,
+              efx        => pixie_efx,
+
+              video_clk  => video_clk,
+
+              csync      => csync,
+              video      => video);
 
   -- XXX real UART not ready yet
   --uart: entity work.uart (rtl)
-  --  port map (clk => clk,
-  --            reset => uart_reset,
-  --            brg_divisor => to_unsigned(163, 8),
-  --            rx_buf_full => uart_rx_buf_full,
-  --            read_rx => uart_read_rx,
-  --            rx_data => uart_read_data,
+  --  port map (clk          => clk,
+  --            clk_enable   => clk_enable
+  --            reset        => uart_reset,
+  --            brg_divisor  => to_unsigned(163, 8),
+  --            rx_buf_full  => uart_rx_buf_full,
+  --            read_rx      => uart_read_rx,
+  --            rx_data      => uart_read_data,
   --            tx_buf_empty => uart_tx_buf_empty,
-  --            load_tx => uart_load_tx,
-  --            tx_data => proc_data_out,
-  --            rxd => rxd,
-  --            txd => txd);
+  --            load_tx      => uart_load_tx,
+  --            tx_data      => proc_data_out,
+  --            rxd          => rxd,
+  --            txd          => txd);
 
   uart_reset <= not deb_sw_run;
 
-  uart_read_rx <= '1' when mem_write = '1' and uart_selected = '1'
-             else '0';
-
-  uart_load_tx <= '1' when mem_read = '1' and uart_selected = '1'
-             else '0';
+  uart_read_rx <= to_std_logic (mem_write = '1' and uart_selected = '1');
+  uart_load_tx <= to_std_logic (mem_read  = '1' and uart_selected = '1');
 
   -- Fake UART
   uart_rx_buf_full  <= '0';
