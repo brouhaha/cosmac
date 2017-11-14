@@ -172,12 +172,11 @@ begin
               csync           => csync,
               video           => video,
               
-              rxd             => '1',
-              txd             => open);
+              rxd             => uart_rxd,
+              txd             => uart_txd);
 
   csync_n <= not csync;
   
-  uart_txd <= uart_rxd;
-  uart_rts_n <= uart_cts_n;
+  uart_rts_n <= uart_cts_n;  -- no flow control yet
               
 end rtl;
