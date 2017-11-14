@@ -1,5 +1,17 @@
 -- COSMAC ELF system
--- Copyright 2009, 2016 Eric Smith <spacewar@gmail.com
+-- Copyright 2009, 2016, 2017 Eric Smith <spacewar@gmail.com
+
+-- This program is free software: you can redistribute it and/or modify
+-- it under the terms of version 3 of the GNU General Public License
+-- as published by the Free Software Foundation.
+
+-- This program is distributed in the hope that it will be useful,
+-- but WITHOUT ANY WARRANTY; without even the implied warranty of
+-- MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+-- GNU General Public License for more details.
+
+-- You should have received a copy of the GNU General Public License
+-- along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 library ieee;
 use ieee.std_logic_1164.all;
@@ -59,8 +71,10 @@ architecture rtl of elf is
 
   signal ef:                   std_logic_vector (4 downto 1);
 
-  signal proc_data_in:         std_logic_vector (7 downto 0);
+  signal data_bus:             std_logic_vector (7 downto 0);
+  
   signal proc_data_out:        std_logic_vector (7 downto 0);
+  
   signal address:              std_logic_vector (15 downto 0);
   signal mem_read:             std_logic;
   signal mem_write:            std_logic;
@@ -71,7 +85,6 @@ architecture rtl of elf is
 
   signal led_data_out:         std_logic_vector (7 downto 0);
 
-  signal mem_write_data:       std_logic_vector (7 downto 0);
   signal mem_read_data:        std_logic_vector (7 downto 0);
   
   signal pixie_disp_on:        std_logic;
@@ -181,7 +194,7 @@ begin
 
                        ef          => ef,
 
-                       data_in     => proc_data_in,
+                       data_in     => data_bus,
                        data_out    => proc_data_out,
                        address     => address,
                        mem_read    => mem_read,
@@ -189,23 +202,20 @@ begin
                        io_port     => io_port,
                        q_out       => q_out,
                        sc          => sc);
-
+                       
   pixie_selected      <= to_std_logic (io_port = pixie_port);
-  pixie_disp_on       <= pixie_selected and mem_write;
-  pixie_disp_off      <= pixie_selected and mem_read;
-  
   switch_led_selected <= to_std_logic (io_port = switch_led_port);
-
-  proc_data_in <= uart_read_data when uart_read_rx = '1'
-             else mem_read_data;
+  uart_selected       <= to_std_logic (io_port = uart_port);
+                       
+  data_bus <= mem_read_data  when mem_read = '1'
+         else sw_data        when wait_req = '1'
+         else sw_data        when mem_write = '1' and switch_led_selected = '1'   
+         else uart_read_data when mem_write = '1' and uart_read_rx = '1'
+         else proc_data_out  when mem_write = '1'
+         else X"00";
 
   mem_write_gated <= mem_write and not deb_sw_mp;
   
-  mem_write_data <= sw_data        when wait_req = '1'
-               else sw_data        when switch_led_selected = '1'
-               else uart_read_data when uart_read_rx = '1'
-               else proc_data_out;
-
   memory: entity work.memory (rtl)
     port map (limit_256_bytes => limit_256_bytes,
               clk             => clk,
@@ -213,8 +223,11 @@ begin
               address         => address,
               mem_read        => mem_read,
               mem_write       => mem_write_gated,
-              data_in         => mem_write_data,
+              data_in         => data_bus,
               data_out        => mem_read_data);
+
+  pixie_disp_on       <= pixie_selected and mem_write;
+  pixie_disp_off      <= pixie_selected and mem_read;
 
   pixie: entity work.pixie_dp (rtl)
     port map (clk        => clk,
@@ -223,7 +236,7 @@ begin
               sc         => sc,
               disp_on    => pixie_disp_on,
               disp_off   => '0',
-              data       => mem_read_data,
+              data       => data_bus,
 
               dmao       => dma_out_req,
               int        => int_req,
@@ -234,7 +247,7 @@ begin
               csync      => csync,
               video      => video);
 
-  uart_selected       <= to_std_logic (io_port = uart_port);
+  uart_reset <= not deb_sw_run;
   uart_read_rx <= uart_selected and mem_write;
   uart_load_tx <= uart_selected and mem_read;
 
@@ -248,10 +261,8 @@ begin
               rx_data      => uart_read_data,
               tx_buf_empty => uart_tx_buf_empty,
               load_tx      => uart_load_tx,
-              tx_data      => mem_read_data,
+              tx_data      => data_bus,
               rxd          => rxd,
               txd          => txd);
-
-  uart_reset <= not deb_sw_run;
 
 end rtl;
