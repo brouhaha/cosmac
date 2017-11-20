@@ -46,14 +46,14 @@ architecture rtl of uart is
   signal rx_reg: std_logic_vector (7 downto 0);
 
   signal tx_state: unsigned (3 downto 0);
-  constant tx_state_start: unsigned (3 downto 0) := "1010";
-  -- data bits are 2 through 9
-  constant tx_state_stop:  unsigned (3 downto 0) := "0001";
-  constant tx_state_idle:  unsigned (3 downto 0) := "0000";
+  constant tx_state_data_lsb: unsigned (3 downto 0) := "1001";
+  -- data bits are 9 through 2
+  constant tx_state_stop:     unsigned (3 downto 0) := "0001";
+  constant tx_state_idle:     unsigned (3 downto 0) := "0000";
 
   signal rx_state: unsigned (3 downto 0);
   constant rx_state_start: unsigned (3 downto 0) := "1010";
-  -- data bits are 2 through 9
+  -- data bits are 9 through 2
   constant rx_state_stop:  unsigned (3 downto 0) := "0001";
   constant rx_state_idle:  unsigned (3 downto 0) := "0000";
 
@@ -97,21 +97,17 @@ begin
           tx_16x_counter <= tx_16x_counter + 1;
           if tx_16x_counter = "0000" then
             if tx_state = tx_state_idle then
-              txd <= '1';
               if tbe = '0' then
                 tx_reg <= tx_buf;
                 tbe <= '1';
-                tx_state <= tx_state_start;
+                txd <= '0';
+                tx_state <= tx_state_data_lsb;
+              else
+                txd <= '1';
               end if;
-            elsif tx_state = tx_state_start then
-              txd <= '0';                   -- start bit
-              tx_state <= tx_state - 1;
-            elsif tx_state = tx_state_stop then
-              txd <= '1';                   -- stop bit
-              tx_state <= tx_state - 1;
             else
               txd <= tx_reg (0);
-              tx_reg <= '0' & tx_reg (7 downto 1);
+              tx_reg <= '1' & tx_reg (7 downto 1);  -- The first one or two '1' bits shifted in will be stop bits
               tx_state <= tx_state - 1;
             end if;
           end if;
