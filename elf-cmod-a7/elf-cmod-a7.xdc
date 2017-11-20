@@ -48,3 +48,9 @@ set_property -dict { PACKAGE_PIN A15 IOSTANDARD LVCMOS33 PULLUP true } [get_port
 set_property -dict { PACKAGE_PIN H1  IOSTANDARD LVCMOS33 PULLUP true } [get_ports {config_sw_n[4]}]
 set_property -dict { PACKAGE_PIN J3  IOSTANDARD LVCMOS33 PULLUP true } [get_ports {config_sw_n[5]}]
 set_property -dict { PACKAGE_PIN J1  IOSTANDARD LVCMOS33 PULLUP true } [get_ports {config_sw_n[6]}]
+
+set_property -dict { PACKAGE_PIN M2  IOSTANDARD LVCMOS33 PULLUP true } [get_ports sd_cd_n]
+set_property -dict { PACKAGE_PIN T1  IOSTANDARD LVCMOS33             } [get_ports sd_cs_n]
+set_property -dict { PACKAGE_PIN N3  IOSTANDARD LVCMOS33             } [get_ports spi_clk]
+set_property -dict { PACKAGE_PIN P3  IOSTANDARD LVCMOS33             } [get_ports spi_mosi]
+set_property -dict { PACKAGE_PIN T2  IOSTANDARD LVCMOS33 PULLUP true } [get_ports spi_miso]

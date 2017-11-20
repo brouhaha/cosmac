@@ -39,7 +39,13 @@ entity elf_cmod_a7 is
         uart_cts_n:    in  std_logic;
         
         video:         out std_logic;
-        csync_n:       out std_logic);
+        csync_n:       out std_logic;
+
+        sd_cd_n:       in  std_logic;
+        sd_cs_n:       out std_logic;
+        spi_clk:       out std_logic;
+        spi_mosi:      out std_logic;
+        spi_miso:      in  std_logic);
 end elf_cmod_a7;
 
 architecture rtl of elf_cmod_a7 is
@@ -178,5 +184,9 @@ begin
   csync_n <= not csync;
   
   uart_rts_n <= uart_cts_n;  -- no flow control yet
-              
+
+  sd_cs_n  <= '1';  -- SD card deselected
+  spi_clk  <= '0';
+  spi_mosi <= '0';
+
 end rtl;
