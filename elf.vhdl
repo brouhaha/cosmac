@@ -1,5 +1,6 @@
 -- COSMAC ELF system
 -- Copyright 2009, 2016, 2017 Eric Smith <spacewar@gmail.com
+-- SPDX-License-Identifier: GPL-3.0
 
 -- This program is free software: you can redistribute it and/or modify
 -- it under the terms of version 3 of the GNU General Public License
@@ -42,7 +43,9 @@ entity elf is
         video:           out    std_logic;
 
         rxd:             in     std_logic;
-        txd:             out    std_logic);
+        rtr:             out    std_logic; -- Ready to Receive (same pin as RTS)
+        txd:             out    std_logic;
+        cts:             in     std_logic);
 
 end elf;
 
@@ -92,11 +95,11 @@ architecture rtl of elf is
   signal pixie_efx:            std_logic;
   
   signal uart_reset:           std_logic;
-  signal uart_rx_buf_full:     std_logic;
+  signal uart_rx_buf_empty:    std_logic;
   signal uart_read_rx:         std_logic;
   signal uart_read_data:       std_logic_vector (7 downto 0);
-  signal uart_tx_buf_empty:    std_logic;
-  signal uart_load_tx:         std_logic;
+  signal uart_tx_buf_full:     std_logic;
+  signal uart_write_tx:        std_logic;
   
   function to_std_logic (b: boolean) return std_logic is
   begin
@@ -179,8 +182,8 @@ begin
   end process;
     
   ef (1)        <= pixie_efx;
-  ef (2)        <= uart_tx_buf_empty;
-  ef (3)        <= uart_rx_buf_full;
+  ef (2)        <= not uart_tx_buf_full;  -- room for at least one tx char
+  ef (3)        <= not uart_rx_buf_empty; -- at least one rx char avail
   ef (4)        <= deb_sw_input;
 
   processor: entity work.cosmac (rtl)
@@ -247,22 +250,31 @@ begin
               csync      => csync,
               video      => video);
 
-  uart_reset <= not deb_sw_run;
-  uart_read_rx <= uart_selected and mem_write;
-  uart_load_tx <= uart_selected and mem_read;
+  uart_reset    <= not deb_sw_run;
+  uart_read_rx  <= uart_selected and mem_write;
+  uart_write_tx <= uart_selected and mem_read;
 
   uart: entity work.uart (rtl)
-    port map (clk          => clk,
-              clk_enable   => clk_enable,
-              reset        => uart_reset,
-              brg_divisor  => to_unsigned (367, 16),
-              rx_buf_full  => uart_rx_buf_full,
-              read_rx      => uart_read_rx,
-              rx_data      => uart_read_data,
-              tx_buf_empty => uart_tx_buf_empty,
-              load_tx      => uart_load_tx,
-              tx_data      => data_bus,
-              rxd          => rxd,
-              txd          => txd);
+    port map (clk                  => clk,
+              clk_enable           => clk_enable,
+              reset                => uart_reset,
+              rtr_handshake_enable => '1',
+              cts_handshake_enable => '1',
+              brg_divisor          => to_unsigned (367, 16),
+
+              rx_buf_empty         => uart_rx_buf_empty,
+              rx_buf_full          => open,
+              read_rx              => uart_read_rx,
+              rx_data              => uart_read_data,
+
+              tx_buf_empty         => open,
+              tx_buf_full          => uart_tx_buf_full,
+              write_tx             => uart_write_tx,
+              tx_data              => data_bus,
+
+              rxd                  => rxd,
+              rtr                  => rtr, -- Ready to Receive (same pin as RTS)
+              txd                  => txd,
+              cts                  => cts);
 
 end rtl;

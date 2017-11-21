@@ -1,3 +1,19 @@
+-- COSMAC ELF system for Digilent Cmod-A7 module
+-- Copyright 2017 Eric Smith <spacewar@gmail.com
+-- SPDX-License-Identifier: GPL-3.0
+
+-- This program is free software: you can redistribute it and/or modify
+-- it under the terms of version 3 of the GNU General Public License
+-- as published by the Free Software Foundation.
+
+-- This program is distributed in the hope that it will be useful,
+-- but WITHOUT ANY WARRANTY; without even the implied warranty of
+-- MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+-- GNU General Public License for more details.
+
+-- You should have received a copy of the GNU General Public License
+-- along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
 library ieee;
 use ieee.std_logic_1164.all;
 use ieee.numeric_std.all;
@@ -35,7 +51,7 @@ entity elf_cmod_a7 is
         
         uart_txd:      out std_logic;
         uart_rxd:      in  std_logic;
-        uart_rts_n:    out std_logic;
+        uart_rtr_n:    out std_logic; -- Ready to Receive (same pin as RTS)
         uart_cts_n:    in  std_logic;
         
         video:         out std_logic;
@@ -80,6 +96,9 @@ architecture rtl of elf_cmod_a7 is
   signal fb_data:              std_logic_vector (7 downto 0);
 
   signal csync:                std_logic;
+
+  signal uart_rtr:             std_logic;
+  signal uart_cts:             std_logic;
   
 begin
 
@@ -179,11 +198,15 @@ begin
               video           => video,
               
               rxd             => uart_rxd,
-              txd             => uart_txd);
+              rtr             => uart_rtr,
+              
+              txd             => uart_txd,
+              cts             => uart_cts);
 
   csync_n <= not csync;
   
-  uart_rts_n <= uart_cts_n;  -- no flow control yet
+  uart_rtr_n <= not uart_rtr;
+  uart_cts   <= not uart_cts_n;
 
   sd_cs_n  <= '1';  -- SD card deselected
   spi_clk  <= '0';

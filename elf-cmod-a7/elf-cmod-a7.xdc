@@ -1,3 +1,20 @@
+# COSMAC ELF system for Digilent Cmod-A7 module
+# Copyright 2017 Eric Smith <spacewar@gmail.com
+# SPDX-License-Identifier: GPL-3.0
+
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of version 3 of the GNU General Public License
+# as published by the Free Software Foundation.
+
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+
 set_property BITSTREAM.CONFIG.SPI_BUSWIDTH 4 [current_design]
 set_property CONFIG_MODE SPIx4 [current_design]
 
@@ -39,7 +56,7 @@ set_property -dict { PACKAGE_PIN P1  IOSTANDARD LVCMOS33 } [get_ports video]
 
 set_property -dict { PACKAGE_PIN N1  IOSTANDARD LVCMOS33 } [get_ports uart_txd]
 set_property -dict { PACKAGE_PIN R2  IOSTANDARD LVCMOS33 } [get_ports uart_rxd]
-set_property -dict { PACKAGE_PIN T3  IOSTANDARD LVCMOS33 } [get_ports uart_rts_n]
+set_property -dict { PACKAGE_PIN T3  IOSTANDARD LVCMOS33 } [get_ports uart_rtr_n]
 set_property -dict { PACKAGE_PIN H2  IOSTANDARD LVCMOS33 PULLUP true } [get_ports uart_cts_n]
 
 set_property -dict { PACKAGE_PIN A14 IOSTANDARD LVCMOS33 PULLUP true } [get_ports {config_sw_n[1]}]
