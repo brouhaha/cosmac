@@ -77,6 +77,7 @@ begin
       if reset = '1' then
         write_ptr <= to_unsigned (0, write_ptr'length);
       elsif gated_write_enable = '1' then
+        ram (to_integer (write_ptr)) <= write_data;
         write_ptr <= write_ptr + 1;     
       end if;
     end if;
