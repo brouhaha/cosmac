@@ -1,5 +1,6 @@
 -- Switch debouncer for COSMAC ELF
 -- Copyright 2009, 2016 Eric Smith <eric@brouhaha.com>
+-- SPDX-License-Identifier: GPL-3.0
 
 library ieee;
 use ieee.std_logic_1164.all;

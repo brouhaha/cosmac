@@ -1,5 +1,6 @@
 -- ELF-CMOD-A7 hexadecimal LED multiplexer
 -- Copyright 2017 Eric Smith <spacewar@gmail.com>
+-- SPDX-License-Identifier: GPL-3.0
 
 -- This program is free software: you can redistribute it and/or modify
 -- it under the terms of version 3 of the GNU General Public License
@@ -17,6 +18,7 @@
 library ieee;
 use ieee.std_logic_1164.all;
 use ieee.numeric_std.all;
+use work.util.all;
 
 entity hex_led_mux is
   port (clk:           in  std_logic;
@@ -56,15 +58,6 @@ architecture rtl of hex_led_mux is
   signal prev_data: std_logic_vector (7 downto 0);
   signal prev_addr: std_logic_vector (15 downto 0);
  
-  function to_std_logic (b: boolean) return std_logic is
-  begin
-    if b then
-      return '1';
-    else
-      return '0';
-    end if;
-  end function to_std_logic;
-
 begin
   process (clk)
   begin

@@ -58,15 +58,6 @@ architecture rtl of sync_fifo is
 
   signal level:      unsigned (address_width downto 0);
 
-  function to_std_logic (b: boolean) return std_logic is
-  begin
-    if b then
-      return '1';
-    else
-      return '0';
-    end if;
-  end function to_std_logic;
-
 begin
 
   gated_write_enable <= write_enable and to_std_logic (level /= depth);

@@ -1,5 +1,6 @@
 -- PIXIE graphics core, frame buffer, dual-port memory version
 -- Copyright 2017 Eric Smith <spacewar@gmail.com>
+-- SPDX-License-Identifier: GPL-3.0
 
 -- This program is free software: you can redistribute it and/or modify
 -- it under the terms of version 3 of the GNU General Public License

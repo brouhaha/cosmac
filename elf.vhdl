@@ -17,6 +17,7 @@
 library ieee;
 use ieee.std_logic_1164.all;
 use ieee.numeric_std.all;
+use work.util.all;
 
 entity elf is
   generic (clk_freq:      real := 25.0e6;
@@ -101,15 +102,6 @@ architecture rtl of elf is
   signal uart_tx_buf_full:     std_logic;
   signal uart_write_tx:        std_logic;
   
-  function to_std_logic (b: boolean) return std_logic is
-  begin
-    if b then
-      return '1';
-    else
-      return '0';
-    end if;
-  end function to_std_logic;
-
 begin
 
   sw_input_debouncer: entity work.debouncer (rtl)

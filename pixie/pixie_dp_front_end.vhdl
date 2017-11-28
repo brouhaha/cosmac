@@ -1,5 +1,6 @@
 -- PIXIE graphics core, front end, dual-port memory version
 -- Copyright 2017 Eric Smith <spacewar@gmail.com>
+-- SPDX-License-Identifier: GPL-3.0
 
 -- This program is free software: you can redistribute it and/or modify
 -- it under the terms of version 3 of the GNU General Public License
@@ -19,6 +20,7 @@
 library ieee;
 use ieee.std_logic_1164.all;
 use ieee.numeric_std.all;
+use work.util.all;
 
 entity pixie_dp_front_end is
   port (clk:        in  std_logic;
@@ -60,16 +62,6 @@ architecture rtl of pixie_dp_front_end is
 
   signal dma_xfer:             std_logic;
   signal addr_counter:         unsigned (9 downto 0);
-
-  
-  function to_std_logic (b: boolean) return std_logic is
-  begin
-    if b then
-      return '1';
-    else
-      return '0';
-    end if;
-  end function to_std_logic;
 
 begin
   sc_fetch     <= to_std_logic (sc = "00");
