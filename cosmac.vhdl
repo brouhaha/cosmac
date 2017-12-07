@@ -237,7 +237,7 @@ architecture rtl of cosmac is
   constant adder_opb_sel_0:    std_logic_vector (1 downto 0) := "00";
   constant adder_opb_sel_1:    std_logic_vector (1 downto 0) := "01";
   constant adder_opb_sel_m1:   std_logic_vector (1 downto 0) := "11";
-  constant adder_opb_sel_m128: std_logic_vector (1 downto 0) := "10";  -- not used
+  constant adder_opb_sel_m2:   std_logic_vector (1 downto 0) := "10";  -- not used
 
 begin
   q_out <= q;
@@ -248,7 +248,7 @@ begin
 
   adder_opb <= x"0001" when adder_opb_sel = adder_opb_sel_1
           else x"ffff" when adder_opb_sel = adder_opb_sel_m1
-          else x"8000" when adder_opb_sel = adder_opb_sel_m128
+          else x"fffe" when adder_opb_sel = adder_opb_sel_m2
           else x"0000";
 
   adder_result <= std_logic_vector (unsigned (r_read_data) + unsigned (adder_opb));
@@ -670,7 +670,7 @@ begin
           d_sel <= d_sel_data_in;
         elsif ir = inst_stxd then
           r_addr_sel <= r_addr_sel_x;
-          adder_opb_sel <= adder_opb_sel_1;
+          adder_opb_sel <= adder_opb_sel_m1;
           data_out_sel <= data_out_sel_d;
           r_write_data_sel <= r_write_data_sel_adder;
           r_write_high <= '1';
