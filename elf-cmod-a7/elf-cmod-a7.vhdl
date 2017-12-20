@@ -99,6 +99,9 @@ architecture rtl of elf_cmod_a7 is
 
   signal uart_rtr:             std_logic;
   signal uart_cts:             std_logic;
+
+  signal sd_cd:                std_logic;
+  signal sd_cs:                std_logic;
   
 begin
 
@@ -201,15 +204,21 @@ begin
               rtr             => uart_rtr,
               
               txd             => uart_txd,
-              cts             => uart_cts);
+              cts             => uart_cts,
+
+              sd_cd           => sd_cd,
+              sd_cs           => sd_cs,
+              spi_clk         => spi_clk,
+              spi_mosi        => spi_mosi,
+              spi_miso        => spi_miso
+              );
 
   csync_n <= not csync;
   
   uart_rtr_n <= not uart_rtr;
   uart_cts   <= not uart_cts_n;
 
-  sd_cs_n  <= '1';  -- SD card deselected
-  spi_clk  <= '0';
-  spi_mosi <= '0';
+  sd_cd    <= not sd_cd_n;
+  sd_cs_n  <= not sd_cs;
 
 end rtl;

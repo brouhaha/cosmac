@@ -46,7 +46,14 @@ entity elf is
         rxd:             in     std_logic;
         rtr:             out    std_logic; -- Ready to Receive (same pin as RTS)
         txd:             out    std_logic;
-        cts:             in     std_logic);
+        cts:             in     std_logic;
+
+        sd_cd:           in     std_logic; -- card detect
+        sd_cs:           out    std_logic;
+        spi_clk:         out    std_logic;
+        spi_mosi:        out    std_logic;
+        spi_miso:        in     std_logic
+        );
 
 end elf;
 
@@ -54,11 +61,15 @@ architecture rtl of elf is
 
   constant pixie_port:         std_logic_vector (2 downto 0) := "001";
   constant switch_led_port:    std_logic_vector (2 downto 0) := "100";
+  constant spi_ctrl_port:      std_logic_vector (2 downto 0) := "101";
+  constant spi_data_port:      std_logic_vector (2 downto 0) := "110";
   constant uart_port:          std_logic_vector (2 downto 0) := "111";
 
   signal pixie_selected:       std_logic;
   signal switch_led_selected:  std_logic;
   signal uart_selected:        std_logic;
+  signal spi_ctrl_selected:    std_logic;
+  signal spi_data_selected:    std_logic;
 
   signal deb_sw_input:         std_logic;
   signal deb_sw_load:          std_logic;
@@ -101,6 +112,24 @@ architecture rtl of elf is
   signal uart_read_data:       std_logic_vector (7 downto 0);
   signal uart_tx_buf_full:     std_logic;
   signal uart_write_tx:        std_logic;
+
+  signal spi_reset:            std_logic;
+  signal spi_write_tx:         std_logic;
+  signal spi_read_data:        std_logic_vector (7 downto 0);
+  signal spi_slave_select:     std_logic_vector (1 downto 0);
+
+  -- SPI control port
+  signal spi_control:          std_logic_vector (7 downto 0);
+  alias  spi_cpol:             std_logic is spi_control (7);
+  alias  spi_cpha:             std_logic is spi_control (6);
+  alias  spi_lsb_first:        std_logic is spi_control (5);
+  alias  spi_continuous:       std_logic is spi_control (4);
+  alias  spi_slave_id:         std_logic_vector (0 downto 0) is spi_control (0 downto 0);
+
+  -- SPI status port
+  signal spi_status:           std_logic_vector (7 downto 0);
+  alias  spi_done:             std_logic is spi_status (7);
+  alias  spi_sd_cd:            std_logic is spi_status (6);
   
 begin
 
@@ -201,11 +230,15 @@ begin
   pixie_selected      <= to_std_logic (io_port = pixie_port);
   switch_led_selected <= to_std_logic (io_port = switch_led_port);
   uart_selected       <= to_std_logic (io_port = uart_port);
+  spi_ctrl_selected   <= to_std_logic (io_port = spi_ctrl_port);
+  spi_data_selected   <= to_std_logic (io_port = spi_data_port);
                        
   data_bus <= mem_read_data  when mem_read = '1'
          else sw_data        when wait_req = '1'
          else sw_data        when mem_write = '1' and switch_led_selected = '1'   
-         else uart_read_data when mem_write = '1' and uart_read_rx = '1'
+         else spi_read_data  when mem_write = '1' and spi_data_selected = '1'
+         else spi_status     when mem_write = '1' and spi_ctrl_selected = '1'
+         else uart_read_data when mem_write = '1' and uart_selected = '1'
          else proc_data_out  when mem_write = '1'
          else X"00";
 
@@ -269,4 +302,44 @@ begin
               txd                  => txd,
               cts                  => cts);
 
+  spi_reset      <= not deb_sw_run;
+  spi_write_tx   <= spi_data_selected and mem_read;
+
+  spimc: process (clk, clk_enable)
+  begin
+    if clk_enable = '1' and rising_edge (clk) then
+      if spi_ctrl_selected = '1' and mem_read = '1' then
+        spi_control <= data_bus;
+      end if;
+    end if;
+  end process;
+
+  spim: entity work.spi_master (rtl)
+    generic map (brg_divisor_m1_width => 8,
+                 data_width           => 8,
+                 slave_count          => 2)
+    port map (clk              => clk,
+              clk_enable       => clk_enable,
+              reset            => spi_reset,
+              
+              cpol             => spi_cpol,
+              cpha             => spi_cpha,
+              lsb_first        => spi_lsb_first,
+              brg_divisor_m1   => to_unsigned (7, 8),
+
+              slave_id         => unsigned (spi_slave_id),
+              continuous       => spi_continuous,
+              write_strobe     => spi_write_tx,
+              tx_data          => data_bus,
+              rx_data          => spi_read_data,
+              done             => spi_done,
+
+              spi_slave_select => spi_slave_select,
+              spi_clk          => spi_clk,
+              spi_mosi         => spi_mosi,
+              spi_miso         => spi_miso);
+
+  sd_cs <= spi_slave_select (0);
+  spi_sd_cd <= sd_cd;
+              
 end rtl;
