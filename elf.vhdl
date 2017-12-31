@@ -20,9 +20,9 @@ use ieee.numeric_std.all;
 use work.util.all;
 
 entity elf is
-  generic (clk_freq:      real := 25.0e6;
+  generic (clk_freq_hz:   real := 56340480.0;
            debounce_time: time := 1 ms;
-           uart_rate:     real := 19200.0);
+           uart_rate:     real := 115200.0);
   port (clk:             in     std_logic;
         clk_enable:      in     std_logic := '1';
         
@@ -134,7 +134,7 @@ architecture rtl of elf is
 begin
 
   sw_input_debouncer: entity work.debouncer (rtl)
-    --generic map (clk_freq =>      clk_freq,
+    --generic map (clk_freq =>      clk_freq_hz,
     --             debounce_time => debounce_time)
     port map (clk    => clk,
               clk_en => clk_enable,
@@ -142,7 +142,7 @@ begin
               deb_sw => deb_sw_input);
 
   sw_load_debouncer: entity work.debouncer (rtl)
-    --generic map (clk_freq =>      clk_freq,
+    --generic map (clk_freq =>      clk_freq_hz,
     --             debounce_time => debounce_time)
     port map (clk    => clk,
               clk_en => clk_enable,
@@ -150,7 +150,7 @@ begin
               deb_sw => deb_sw_load);
 
   sw_mp_debouncer: entity work.debouncer (rtl)
-    --generic map (clk_freq =>      clk_freq,
+    --generic map (clk_freq =>      clk_freq_hz,
     --             debounce_time => debounce_time)
     port map (clk    => clk,
               clk_en => clk_enable,
@@ -158,7 +158,7 @@ begin
               deb_sw => deb_sw_mp);
 
   sw_run_debouncer: entity work.debouncer (rtl)
-    --generic map (clk_freq =>      clk_freq,
+    --generic map (clk_freq =>      clk_freq_hz,
     --             debounce_time => debounce_time)
     port map (clk    => clk,
               clk_en => clk_enable,
@@ -280,21 +280,27 @@ begin
   uart_write_tx <= uart_selected and mem_read;
 
   uart: entity work.uart (rtl)
+    generic map (clk_freq_hz                => clk_freq_hz,
+                 default_baud_rate          => 115200.0,
+                 brg_divisor_integer_width  => 20,
+                 brg_divisor_fraction_width => 4)
     port map (clk                  => clk,
               clk_enable           => clk_enable,
               reset                => uart_reset,
               rtr_handshake_enable => '1',
               cts_handshake_enable => '1',
-              brg_divisor          => to_unsigned (367, 16),
+              
+              --brg_divisor_m1_integer => to_unsigned(29, 20),
+              --brg_divisor_fraction   => to_unsigned(9, 4),
 
               rx_buf_empty         => uart_rx_buf_empty,
               rx_buf_full          => open,
-              read_rx              => uart_read_rx,
+              rx_read_strobe       => uart_read_rx,
               rx_data              => uart_read_data,
 
               tx_buf_empty         => open,
               tx_buf_full          => uart_tx_buf_full,
-              write_tx             => uart_write_tx,
+              tx_write_strobe      => uart_write_tx,
               tx_data              => data_bus,
 
               rxd                  => rxd,

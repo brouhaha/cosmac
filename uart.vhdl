@@ -20,33 +20,38 @@
 library ieee;
 use ieee.std_logic_1164.all;
 use ieee.numeric_std.all;
+use ieee.math_real.all;
 use work.util.all;
 
 entity uart is
-  generic (brg_divisor_width: natural := 16;
-           rx_fifo_depth:     natural := 16;
-           tx_fifo_depth:     natural := 16);
+  generic (clk_freq_hz:                real := 1.0e6;
+           default_baud_rate:          real := 9600.0;
+           brg_divisor_integer_width:  natural := 16;
+           brg_divisor_fraction_width: natural := 4;
+           rx_fifo_depth:              natural := 16;
+           tx_fifo_depth:              natural := 16);
   port (
-    clk:                  in  std_logic;
-    clk_enable:           in  std_logic := '1';
-    reset:                in  std_logic;
+    clk:                    in  std_logic;
+    clk_enable:             in  std_logic := '1';
+    reset:                  in  std_logic;
 
-    rtr_handshake_enable: in  std_logic := '0';
-    rtr_threshold:        in  unsigned (log2ceil (rx_fifo_depth) - 1 downto 0) := to_unsigned (rx_fifo_depth / 2, log2ceil (rx_fifo_depth));
+    rtr_handshake_enable:   in  std_logic := '0';
+    rtr_threshold:          in  unsigned (log2ceil (rx_fifo_depth) - 1 downto 0) := to_unsigned (rx_fifo_depth / 2, log2ceil (rx_fifo_depth));
     
-    cts_handshake_enable: in  std_logic := '0';
+    cts_handshake_enable:   in  std_logic := '0';
 
-    brg_divisor:          in  unsigned (brg_divisor_width - 1 downto 0);
+    brg_divisor_m1_integer: in  unsigned (brg_divisor_integer_width - 1 downto 0) := to_unsigned (natural (floor ((clk_freq_hz / (16.0 * default_baud_rate))) - 1.0), brg_divisor_integer_width);
+    brg_divisor_fraction:   in  unsigned (brg_divisor_fraction_width - 1 downto 0) := to_unsigned (natural (floor (real (2**brg_divisor_fraction_width) * (((clk_freq_hz / (16.0 * default_baud_rate))) - floor ((clk_freq_hz / (16.0 * default_baud_rate)))))), brg_divisor_fraction_width);
 
     -- processor interface
     rx_buf_empty:         out std_logic;  -- don't read if empty
     rx_buf_full:          out std_logic;
-    read_rx:              in  std_logic;
+    rx_read_strobe:       in  std_logic;
     rx_data:              out std_logic_vector (7 downto 0);
 
     tx_buf_empty:         out std_logic;
     tx_buf_full:          out std_logic;  -- don't write if full
-    write_tx:             in  std_logic;
+    tx_write_strobe:      in  std_logic;
     tx_data:              in  std_logic_vector (7 downto 0);
 
     -- serial interface
@@ -60,7 +65,6 @@ end uart;
 
 architecture rtl of uart is
 
-  signal brg_counter:    unsigned (brg_divisor_width - 1 downto 0);
   signal tx_16x_counter: unsigned (3 downto 0);
   signal rx_16x_counter: unsigned (3 downto 0);
 
@@ -95,6 +99,15 @@ architecture rtl of uart is
 
 begin
 
+  brg_divisor: entity work.fractional_clock_divider (rtl)
+    generic map (divisor_integer_width  => brg_divisor_integer_width,
+                 divisor_fraction_width => brg_divisor_fraction_width)
+    port map (clk_in             => clk,
+              reset              => reset,
+              divisor_m1_integer => brg_divisor_m1_integer,
+              divisor_fraction   => brg_divisor_fraction,
+              clk_out            => uart_clk_16x);
+
   rx_fifo: entity work.sync_fifo (rtl)
     generic map (depth => rx_fifo_depth)
     port map (clk            => clk,
@@ -102,7 +115,7 @@ begin
               reset          => reset,
               write_enable   => rx_fifo_write_enable,
               write_data     => rx_reg,
-              read_enable    => read_rx,
+              read_enable    => rx_read_strobe,
               read_data      => rx_data,
               threshold      => rtr_threshold,
               empty          => rx_fifo_empty,
@@ -117,7 +130,7 @@ begin
     port map (clk            => clk,
               clk_enable     => clk_enable,
               reset          => reset,
-              write_enable   => write_tx,
+              write_enable   => tx_write_strobe,
               write_data     => tx_data,
               read_enable    => tx_fifo_read_enable,
               read_data      => tx_fifo_read_data,
@@ -127,22 +140,6 @@ begin
               
   tx_buf_empty <= tx_fifo_empty;
   tx_buf_full  <= tx_fifo_full;
-
-  brg_16x_p: process (clk, clk_enable)
-  begin
-    if rising_edge (clk) and clk_enable = '1' then
-      if reset = '1' then
-        brg_counter <= brg_divisor;
-        uart_clk_16x <= '1';
-      elsif to_integer (brg_counter) = 0 then
-        brg_counter <= brg_divisor;
-        uart_clk_16x <= '1';
-      else
-        brg_counter <= brg_counter - 1;
-        uart_clk_16x <= '0';
-      end if;
-    end if;
-  end process brg_16x_p;
 
   tx_p: process (clk, clk_enable)
   begin
