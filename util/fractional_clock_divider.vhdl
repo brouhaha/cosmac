@@ -51,11 +51,13 @@ end fractional_clock_divider;
 
 architecture rtl of fractional_clock_divider is
 
-  signal int_counter: unsigned (divisor_integer_width - 1 downto 0);
-  signal frac_accum:  unsigned (divisor_fraction_width - 1 downto 0);
+  signal int_counter:   unsigned (divisor_integer_width - 1 downto 0);
+  signal frac_accum:    unsigned (divisor_fraction_width - 1 downto 0);
 
   signal frac_sum:      unsigned (divisor_fraction_width - 1 downto 0);
   signal frac_overflow: std_logic;
+
+  signal delayed_load:  std_logic;
 
 begin
 
@@ -74,17 +76,22 @@ begin
         int_counter <= divisor_m1_integer;
         frac_accum  <= to_unsigned (0, frac_accum'length);
         clk_out <= '0';
-      elsif int_counter = 0 then
-        if frac_overflow = '1' then
-          int_counter <= divisor_m1_integer + 1;
-        else
-          int_counter <= divisor_m1_integer;
-        end if;
+        delayed_load <= '0';
+      elsif delayed_load = '1' or (int_counter = 0 and frac_overflow = '0') then
+        int_counter <= divisor_m1_integer;
         frac_accum <= frac_sum;
         clk_out <= '1';
+        delayed_load <= '0';
+      elsif int_counter = 0 and frac_overflow = '1' then
+        int_counter <= int_counter - 1; -- not necessary but simpifies logic
+        -- frac_accum unchanged
+        clk_out <= '0';
+        delayed_load <= '1';
       else
         int_counter <= int_counter - 1;
+        -- frac_accum unchanged
         clk_out <= '0';
+        delayed_load <= '0';
       end if;
     end if;
   end process int_p;
