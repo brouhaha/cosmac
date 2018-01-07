@@ -15,8 +15,12 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 
-set_property BITSTREAM.CONFIG.SPI_BUSWIDTH 4 [current_design]
-set_property CONFIG_MODE SPIx4 [current_design]
+set_property -dict { CFGBVS                        VCCO
+                     CONFIG_VOLTAGE                3.3
+                     CONFIG_MODE                   SPIx4
+                     BITSTREAM.CONFIG.SPI_BUSWIDTH 4     } [current_design]
+
+create_clock -period 83.333 -waveform {0.000 41.667} -name clk_in [get_ports {clk_in}] 
 
 # Digilent Cmod-A7 on-board resources
 set_property -dict { PACKAGE_PIN L17 IOSTANDARD LVCMOS33 } [get_ports clk_in]
